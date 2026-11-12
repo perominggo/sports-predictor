@@ -1,0 +1,28 @@
+# Variables de entorno y secretos (NUNCA subir a GitHub)
+.env
+.env.local
+.env.*.local
+
+# Entornos virtuales de Python
+.venv/
+venv/
+env/
+ENV/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Playwright y logs
+playwright-report/
+test-results/
+*.log
+
+# Sistema Operativo / IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

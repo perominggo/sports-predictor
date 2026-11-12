@@ -1,0 +1,16 @@
+services:
+  sports-predictor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sports-predictor-rag
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PLAYWRIGHT_HEADLESS=true
+    volumes:
+      - ./static:/app/static
+    ipc: host
+    restart: unless-stopped
