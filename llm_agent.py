@@ -10,7 +10,7 @@ from typing import Any, Dict, Tuple
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 SYSTEM_PROMPT = """Eres un Analista Cuantitativo Deportivo y Experto en Modelado Predictivo (Sports Quant & Oddsmaker).
 Recibirás un objeto JSON extraído mediante Web Scraping (Playwright + BeautifulSoup) con estadísticas avanzadas y cuotas de mercado.
@@ -33,10 +33,10 @@ def _build_user_prompt(sport: str, event: str, scraped_data: Dict[str, Any]) -> 
     )
 
 
-def _generate_with_openai(user_prompt: str, api_key: str) -> str:
+def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
     from openai import OpenAI
 
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model=model_name,
@@ -46,24 +46,38 @@ def _generate_with_openai(user_prompt: str, api_key: str) -> str:
         ],
         temperature=0.3,
     )
-    return response.choices[0].message.content or "Sin respuesta del modelo OpenAI."
+    text = response.choices[0].message.content or "Sin respuesta del modelo OpenAI."
+    return text, f"openai ({model_name})"
 
 
-def _generate_with_gemini(user_prompt: str, api_key: str) -> str:
+def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
     from google import genai
     from google.genai import types
 
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    configured_model = os.getenv("GEMINI_MODEL", "gemini-2.5-pro").strip()
+    # Si el usuario escribe "argon" o un alias interno, probamos primero y hacemos fallback a gemini-2.5-pro / gemini-2.5-flash
+    candidate_models = [configured_model]
+    for fallback in ("gemini-2.5-pro", "gemini-2.5-flash"):
+        if fallback not in candidate_models:
+            candidate_models.append(fallback)
+
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=model_name,
-        contents=user_prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.3,
-        ),
-    )
-    return response.text or "Sin respuesta del modelo Gemini."
+    last_err = None
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.3,
+                ),
+            )
+            return response.text or "Sin respuesta del modelo Gemini.", f"gemini ({model_name})"
+        except Exception as err:
+            last_err = err
+            continue
+    raise RuntimeError(f"Error en API de Gemini: {last_err}")
 
 
 def _fallback_quantitative_report(sport: str, event: str, scraped_data: Dict[str, Any]) -> str:
@@ -96,25 +110,37 @@ def _fallback_quantitative_report(sport: str, event: str, scraped_data: Dict[str
 
 def generate_prediction(sport: str, event: str, scraped_data: Dict[str, Any]) -> Tuple[str, str]:
     """
-    Determina qué proveedor LLM utilizar según .env, ejecuta la inferencia RAG y devuelve:
-    (texto_prediccion, proveedor_utilizado)
+    Determina qué proveedor LLM utilizar según .env, ejecuta la inferencia RAG con fallback automático
+    entre proveedores si una clave o modelo falla, y devuelve: (texto_prediccion, proveedor_utilizado)
     """
-    preferred_provider = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+    load_dotenv(override=True)
+    preferred_provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
 
     user_prompt = _build_user_prompt(sport, event, scraped_data)
 
-    if preferred_provider == "gemini" and gemini_key:
-        return _generate_with_gemini(user_prompt, gemini_key), f"gemini ({os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')})"
+    # Orden de prioridad según LLM_PROVIDER
+    providers_order = []
+    if preferred_provider == "gemini":
+        if gemini_key:
+            providers_order.append(("gemini", gemini_key))
+        if openai_key:
+            providers_order.append(("openai", openai_key))
+    else:
+        if openai_key:
+            providers_order.append(("openai", openai_key))
+        if gemini_key:
+            providers_order.append(("gemini", gemini_key))
 
-    if preferred_provider == "openai" and openai_key:
-        return _generate_with_openai(user_prompt, openai_key), f"openai ({os.getenv('OPENAI_MODEL', 'gpt-4o-mini')})"
+    for provider_name, key in providers_order:
+        try:
+            if provider_name == "gemini":
+                return _generate_with_gemini(user_prompt, key)
+            else:
+                return _generate_with_openai(user_prompt, key)
+        except Exception as err:
+            print(f"[WARN] Falló proveedor {provider_name}: {err}. Probando siguiente proveedor...")
+            continue
 
-    if openai_key:
-        return _generate_with_openai(user_prompt, openai_key), f"openai ({os.getenv('OPENAI_MODEL', 'gpt-4o-mini')})"
-
-    if gemini_key:
-        return _generate_with_gemini(user_prompt, gemini_key), f"gemini ({os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')})"
-
-    return _fallback_quantitative_report(sport, event, scraped_data), "local-fallback (sin API key)"
+    return _fallback_quantitative_report(sport, event, scraped_data), "local-fallback (revisa tus API keys en .env)"
