@@ -3,11 +3,23 @@ Servidor Backend FastAPI para el Buscador y Predictor Deportivo RAG.
 Sirve la interfaz web estática (static/index.html) y expone el endpoint de inferencia /api/predict.
 """
 
+import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
+
+# En Windows, asegurar ProactorEventLoop para subprocesos de Playwright
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+# Limpiar variables de proxy SOCKS residuales del sistema que puedan bloquear httpx/OpenAI/Gemini
+for _proxy_var in ("ALL_PROXY", "all_proxy", "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"):
+    if os.environ.get(_proxy_var, "").startswith("socks"):
+        os.environ.pop(_proxy_var, None)
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -17,7 +29,7 @@ from pydantic import BaseModel, Field
 from llm_agent import generate_prediction
 from scraper import fetch_sports_data
 
-load_dotenv()
+load_dotenv(override=True)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -64,6 +76,7 @@ async def serve_frontend() -> FileResponse:
 
 @app.get("/api/health")
 async def health_check() -> Dict[str, str]:
+    load_dotenv(override=True)
     openai_configured = bool(os.getenv("OPENAI_API_KEY", "").strip())
     gemini_configured = bool(os.getenv("GEMINI_API_KEY", "").strip())
     provider = os.getenv("LLM_PROVIDER", "openai").strip().lower()
@@ -86,10 +99,11 @@ async def health_check() -> Dict[str, str]:
 async def predict_sport_event(payload: PredictRequest) -> PredictResponse:
     try:
         scraped_data = await fetch_sports_data(payload.sport, payload.event)
-        prediction_text, provider_used = generate_prediction(
-            sport=payload.sport,
-            event=payload.event,
-            scraped_data=scraped_data,
+        prediction_text, provider_used = await asyncio.to_thread(
+            generate_prediction,
+            payload.sport,
+            payload.event,
+            scraped_data,
         )
         return PredictResponse(
             status="success",
@@ -101,9 +115,10 @@ async def predict_sport_event(payload: PredictRequest) -> PredictResponse:
             prediction=prediction_text,
         )
     except Exception as exc:
+        err_msg = str(exc).strip() or repr(exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Error procesando la predicción para '{payload.event}': {str(exc)}",
+            detail=f"Error procesando la predicción para '{payload.event}': {err_msg}",
         ) from exc
 
 

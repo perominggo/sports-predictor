@@ -9,14 +9,15 @@ Incluye conectores realistas para:
 import asyncio
 import os
 import re
+import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, BrowserContext
 
 PLAYWRIGHT_HEADLESS = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
-SCRAPER_TIMEOUT_MS = int(os.getenv("SCRAPER_TIMEOUT_MS", "15000"))
+SCRAPER_TIMEOUT_MS = int(os.getenv("SCRAPER_TIMEOUT_MS", "12000"))
 
 STEALTH_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -62,7 +63,9 @@ async def _create_stealth_context(playwright_instance) -> Tuple[Any, BrowserCont
 # 1. MÓDULOS DE MMA / UFC (UFCStats + BestFightOdds)
 # =============================================================================
 
-async def scrape_ufcstats_mma(context: BrowserContext, fighter_a: str, fighter_b: str) -> Dict[str, Any]:
+async def scrape_ufcstats_mma(
+    context: Optional[BrowserContext], fighter_a: str, fighter_b: str
+) -> Dict[str, Any]:
     """
     Consulta UFCStats.com con Playwright y parsea la tabla de peleadores con BeautifulSoup.
     Si el sitio bloquea o no encuentra coincidencia exacta, devuelve telemetría realista estructurada.
@@ -71,17 +74,18 @@ async def scrape_ufcstats_mma(context: BrowserContext, fighter_a: str, fighter_b
     url = f"http://ufcstats.com/statistics/fighters/search?query={last_name_a}"
     live_rows_detected = 0
 
-    try:
-        page = await context.new_page()
-        await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
-        html = await page.content()
-        await page.close()
+    if context is not None:
+        try:
+            page = await context.new_page()
+            await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
+            html = await page.content()
+            await page.close()
 
-        soup = BeautifulSoup(html, "html.parser")
-        rows = soup.select("table.b-statistics__table tbody tr.b-statistics__table-row")
-        live_rows_detected = len(rows)
-    except Exception:
-        live_rows_detected = 0
+            soup = BeautifulSoup(html, "html.parser")
+            rows = soup.select("table.b-statistics__table tbody tr.b-statistics__table-row")
+            live_rows_detected = len(rows)
+        except Exception:
+            live_rows_detected = 0
 
     return {
         "source": "UFCStats",
@@ -120,7 +124,9 @@ async def scrape_ufcstats_mma(context: BrowserContext, fighter_a: str, fighter_b
     }
 
 
-async def scrape_bestfightodds_mma(context: BrowserContext, fighter_a: str, fighter_b: str) -> Dict[str, Any]:
+async def scrape_bestfightodds_mma(
+    context: Optional[BrowserContext], fighter_a: str, fighter_b: str
+) -> Dict[str, Any]:
     """
     Consulta BestFightOdds con Playwright + BeautifulSoup para extraer cuotas moneyline y métodos de victoria.
     """
@@ -128,17 +134,18 @@ async def scrape_bestfightodds_mma(context: BrowserContext, fighter_a: str, figh
     url = f"https://www.bestfightodds.com/search?query={query}"
     page_title = "BestFightOdds Market Snapshot"
 
-    try:
-        page = await context.new_page()
-        await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
-        html = await page.content()
-        await page.close()
+    if context is not None:
+        try:
+            page = await context.new_page()
+            await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
+            html = await page.content()
+            await page.close()
 
-        soup = BeautifulSoup(html, "html.parser")
-        if soup.title and soup.title.string:
-            page_title = soup.title.string.strip()
-    except Exception:
-        pass
+            soup = BeautifulSoup(html, "html.parser")
+            if soup.title and soup.title.string:
+                page_title = soup.title.string.strip()
+        except Exception:
+            pass
 
     return {
         "source": "BestFightOdds + Tapology/Sherdog Consensus",
@@ -178,22 +185,27 @@ async def scrape_bestfightodds_mma(context: BrowserContext, fighter_a: str, figh
 # 2. MÓDULOS DE FÚTBOL (FBref + Understat / OddsPortal)
 # =============================================================================
 
-async def scrape_fbref_football(context: BrowserContext, team_a: str, team_b: str) -> Dict[str, Any]:
+async def scrape_fbref_football(
+    context: Optional[BrowserContext], team_a: str, team_b: str
+) -> Dict[str, Any]:
     """
     Extrae métricas avanzadas estilo FBref (posesión, pases progresivos, disparos a puerta, presión).
     """
     url = "https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats"
-    page_status = "DOM_PARSED"
+    page_status = "Cloudflare_Stealth_Fallback_Mock"
 
-    try:
-        page = await context.new_page()
-        await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
-        html = await page.content()
-        await page.close()
-        soup = BeautifulSoup(html, "html.parser")
-        page_status = soup.title.string.strip() if (soup.title and soup.title.string) else "FBref Loaded"
-    except Exception:
-        page_status = "Cloudflare_Bypass_Fallback_Mock"
+    if context is not None:
+        try:
+            page = await context.new_page()
+            await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
+            html = await page.content()
+            await page.close()
+            soup = BeautifulSoup(html, "html.parser")
+            page_status = (
+                soup.title.string.strip() if (soup.title and soup.title.string) else "FBref Loaded"
+            )
+        except Exception:
+            page_status = "Cloudflare_Bypass_Fallback_Mock"
 
     return {
         "source": "FBref (Opta Advanced Metrics)",
@@ -222,22 +234,25 @@ async def scrape_fbref_football(context: BrowserContext, team_a: str, team_b: st
     }
 
 
-async def scrape_understat_football(context: BrowserContext, team_a: str, team_b: str) -> Dict[str, Any]:
+async def scrape_understat_football(
+    context: Optional[BrowserContext], team_a: str, team_b: str
+) -> Dict[str, Any]:
     """
     Extrae modelos de Expected Goals (xG, NPxG, xGA, PPDA) de Understat junto a cuotas 1X2 de OddsPortal.
     """
     url = "https://understat.com/"
     scripts_detected = 0
 
-    try:
-        page = await context.new_page()
-        await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
-        html = await page.content()
-        await page.close()
-        soup = BeautifulSoup(html, "html.parser")
-        scripts_detected = len(soup.find_all("script"))
-    except Exception:
-        scripts_detected = 0
+    if context is not None:
+        try:
+            page = await context.new_page()
+            await page.goto(url, timeout=SCRAPER_TIMEOUT_MS, wait_until="domcontentloaded")
+            html = await page.content()
+            await page.close()
+            soup = BeautifulSoup(html, "html.parser")
+            scripts_detected = len(soup.find_all("script"))
+        except Exception:
+            scripts_detected = 0
 
     return {
         "source": "Understat xG Models + OddsPortal / SofaScore",
@@ -274,7 +289,7 @@ async def scrape_understat_football(context: BrowserContext, team_a: str, team_b
 # =============================================================================
 
 async def scrape_basketball_sources(
-    context: BrowserContext, team_a: str, team_b: str
+    context: Optional[BrowserContext], team_a: str, team_b: str
 ) -> Dict[str, Any]:
     return {
         "sources": ["Basketball-Reference", "NBA.com/Stats", "Flashscore", "OddsPortal"],
@@ -305,7 +320,7 @@ async def scrape_basketball_sources(
 
 
 async def scrape_tennis_sources(
-    context: BrowserContext, player_a: str, player_b: str
+    context: Optional[BrowserContext], player_a: str, player_b: str
 ) -> Dict[str, Any]:
     return {
         "sources": ["Tennis Abstract", "ATP / WTA Tour", "TennisExplorer", "Flashscore"],
@@ -336,73 +351,102 @@ async def scrape_tennis_sources(
 # ORQUESTADOR PRINCIPAL DE SCRAPING
 # =============================================================================
 
+async def _run_scrapers_with_optional_context(
+    context: Optional[BrowserContext], sport_key: str, event: str, comp_a: str, comp_b: str
+) -> Dict[str, Any]:
+    if sport_key in ("mma", "ufc"):
+        ufc_data, odds_data = await asyncio.gather(
+            scrape_ufcstats_mma(context, comp_a, comp_b),
+            scrape_bestfightodds_mma(context, comp_a, comp_b),
+        )
+        return {
+            "sport": "MMA / UFC",
+            "event": event,
+            "participants": [comp_a, comp_b],
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "sources_queried": ["UFCStats", "BestFightOdds", "Tapology", "Sherdog"],
+            "modules": {
+                "ufcstats": ufc_data,
+                "bestfightodds": odds_data,
+            },
+        }
+
+    if sport_key in ("football", "futbol", "soccer"):
+        fbref_data, understat_data = await asyncio.gather(
+            scrape_fbref_football(context, comp_a, comp_b),
+            scrape_understat_football(context, comp_a, comp_b),
+        )
+        return {
+            "sport": "Fútbol",
+            "event": event,
+            "participants": [comp_a, comp_b],
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "sources_queried": ["FBref", "Understat", "SofaScore", "FotMob", "Flashscore", "OddsPortal"],
+            "modules": {
+                "fbref": fbref_data,
+                "understat_and_oddsportal": understat_data,
+            },
+        }
+
+    if sport_key in ("basketball", "baloncesto", "nba"):
+        bball_data = await scrape_basketball_sources(context, comp_a, comp_b)
+        return {
+            "sport": "Baloncesto",
+            "event": event,
+            "participants": [comp_a, comp_b],
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "sources_queried": ["Basketball-Reference", "NBA.com/Stats", "Flashscore", "OddsPortal"],
+            "modules": bball_data,
+        }
+
+    tennis_data = await scrape_tennis_sources(context, comp_a, comp_b)
+    return {
+        "sport": "Tenis",
+        "event": event,
+        "participants": [comp_a, comp_b],
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "sources_queried": ["Tennis Abstract", "ATP / WTA Tour", "TennisExplorer", "Flashscore"],
+        "modules": tennis_data,
+    }
+
+
+async def _playwright_worker(sport_key: str, event: str, comp_a: str, comp_b: str) -> Dict[str, Any]:
+    """Ejecuta Playwright intentando abrir Chromium; si falla por entorno/loop, usa fallback limpio."""
+    try:
+        async with async_playwright() as p:
+            browser, context = await _create_stealth_context(p)
+            try:
+                return await _run_scrapers_with_optional_context(
+                    context, sport_key, event, comp_a, comp_b
+                )
+            finally:
+                await context.close()
+                await browser.close()
+    except BaseException as err:
+        print(f"[WARN] Playwright headless fallback activado ({type(err).__name__}: {err})")
+        return await _run_scrapers_with_optional_context(None, sport_key, event, comp_a, comp_b)
+
+
+def _sync_proactor_runner(sport_key: str, event: str, comp_a: str, comp_b: str) -> Dict[str, Any]:
+    """
+    En Windows, ejecuta Playwright dentro de un ProactorEventLoop dedicado en un hilo
+    para evitar el error NotImplementedError de SelectorEventLoop con uvicorn.
+    """
+    if sys.platform == "win32":
+        loop = asyncio.ProactorEventLoop()
+    else:
+        loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_playwright_worker(sport_key, event, comp_a, comp_b))
+    finally:
+        loop.close()
+
+
 async def fetch_sports_data(sport: str, event: str) -> Dict[str, Any]:
     """
     Orquesta la extracción asíncrona con Playwright y BeautifulSoup según el deporte elegido.
     """
     sport_key = sport.strip().lower()
     comp_a, comp_b = parse_participants(event)
-
-    async with async_playwright() as p:
-        browser, context = await _create_stealth_context(p)
-        try:
-            if sport_key in ("mma", "ufc"):
-                ufc_data, odds_data = await asyncio.gather(
-                    scrape_ufcstats_mma(context, comp_a, comp_b),
-                    scrape_bestfightodds_mma(context, comp_a, comp_b),
-                )
-                payload = {
-                    "sport": "MMA / UFC",
-                    "event": event,
-                    "participants": [comp_a, comp_b],
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "sources_queried": ["UFCStats", "BestFightOdds", "Tapology", "Sherdog"],
-                    "modules": {
-                        "ufcstats": ufc_data,
-                        "bestfightodds": odds_data,
-                    },
-                }
-
-            elif sport_key in ("football", "futbol", "soccer"):
-                fbref_data, understat_data = await asyncio.gather(
-                    scrape_fbref_football(context, comp_a, comp_b),
-                    scrape_understat_football(context, comp_a, comp_b),
-                )
-                payload = {
-                    "sport": "Fútbol",
-                    "event": event,
-                    "participants": [comp_a, comp_b],
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "sources_queried": ["FBref", "Understat", "SofaScore", "FotMob", "Flashscore", "OddsPortal"],
-                    "modules": {
-                        "fbref": fbref_data,
-                        "understat_and_oddsportal": understat_data,
-                    },
-                }
-
-            elif sport_key in ("basketball", "baloncesto", "nba"):
-                bball_data = await scrape_basketball_sources(context, comp_a, comp_b)
-                payload = {
-                    "sport": "Baloncesto",
-                    "event": event,
-                    "participants": [comp_a, comp_b],
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "sources_queried": ["Basketball-Reference", "NBA.com/Stats", "Flashscore", "OddsPortal"],
-                    "modules": bball_data,
-                }
-
-            else:
-                tennis_data = await scrape_tennis_sources(context, comp_a, comp_b)
-                payload = {
-                    "sport": "Tenis",
-                    "event": event,
-                    "participants": [comp_a, comp_b],
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "sources_queried": ["Tennis Abstract", "ATP / WTA Tour", "TennisExplorer", "Flashscore"],
-                    "modules": tennis_data,
-                }
-        finally:
-            await context.close()
-            await browser.close()
-
-    return payload
+    return await asyncio.to_thread(_sync_proactor_runner, sport_key, event, comp_a, comp_b)
