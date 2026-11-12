@@ -15,27 +15,37 @@ echo ============================================================
 echo   Sports Predictor RAG - Setup para Windows
 echo ============================================================
 
-where python >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Python no esta instalado o no se encuentra en el PATH.
-    echo Instala Python 3.10+ desde https://www.python.org/
-    exit /b 1
+rem Seleccionar Python 3.13/3.12 si esta disponible para usar ruedas precompiladas (.whl) sin requerir Visual C++
+set PY_CMD=python
+py -3.13 --version >nul 2>nul
+if %errorlevel% equ 0 (
+    set PY_CMD=py -3.13
+) else (
+    py -3.12 --version >nul 2>nul
+    if !errorlevel! equ 0 (
+        set PY_CMD=py -3.12
+    )
+)
+
+echo Usando interprete: %PY_CMD%
+
+rem Si existe un .venv incompleto sin uvicorn/playwright, recrearlo con la version compatible
+if exist .venv (
+    if not exist .venv\Scripts\uvicorn.exe (
+        echo Eliminando entorno virtual previo incompleto...
+        rmdir /s /q .venv
+    )
 )
 
 echo [1/4] Creando entorno virtual en .venv...
 if not exist .venv (
-    python -m venv .venv
+    %PY_CMD% -m venv .venv
 )
 call .venv\Scripts\activate.bat
 
-echo [2/4] Actualizando pip e instalando dependencias de requirements.txt...
+echo [2/4] Actualizando pip e instalando dependencias precompiladas de requirements.txt...
 python -m pip install --upgrade pip --proxy ""
-if %errorlevel% neq 0 (
-    echo [ERROR] Fallo al actualizar pip.
-    exit /b 1
-)
-
-python -m pip install -r requirements.txt --proxy ""
+python -m pip install --prefer-binary -r requirements.txt --proxy ""
 if %errorlevel% neq 0 (
     echo [ERROR] Fallo al instalar requirements.txt.
     exit /b 1
