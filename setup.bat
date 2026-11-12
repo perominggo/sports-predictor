@@ -1,6 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+rem Limpiar posibles variables de proxy SOCKS del entorno que bloquean a pip
+set ALL_PROXY=
+set all_proxy=
+set HTTP_PROXY=
+set http_proxy=
+set HTTPS_PROXY=
+set https_proxy=
+set NO_PROXY=*
+set no_proxy=*
+
 echo ============================================================
 echo   Sports Predictor RAG - Setup para Windows
 echo ============================================================
@@ -13,15 +23,26 @@ if %errorlevel% neq 0 (
 )
 
 echo [1/4] Creando entorno virtual en .venv...
-python -m venv .venv
+if not exist .venv (
+    python -m venv .venv
+)
 call .venv\Scripts\activate.bat
 
 echo [2/4] Actualizando pip e instalando dependencias de requirements.txt...
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip --proxy ""
+if %errorlevel% neq 0 (
+    echo [ERROR] Fallo al actualizar pip.
+    exit /b 1
+)
+
+python -m pip install -r requirements.txt --proxy ""
+if %errorlevel% neq 0 (
+    echo [ERROR] Fallo al instalar requirements.txt.
+    exit /b 1
+)
 
 echo [3/4] Instalando navegadores de Playwright (Chromium)...
-playwright install chromium
+python -m playwright install chromium
 
 if not exist .env (
     echo [4/4] Creando archivo .env a partir de .env.example...
@@ -34,7 +55,6 @@ if not exist .env (
 echo ============================================================
 echo   Instalacion completada con exito.
 echo   Para iniciar el servidor ejecuta:
-echo     call .venv\Scripts\activate
-echo     uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+echo     .\.venv\Scripts\python.exe main.py
 echo ============================================================
 pause
