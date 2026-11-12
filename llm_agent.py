@@ -6,11 +6,22 @@ mediante python-dotenv, pondera estadísticas avanzadas y cuotas de mercado y re
 
 import json
 import os
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import httpx
 from dotenv import load_dotenv
+
+# Desactivar cualquier proxy SOCKS4/SOCKS5 heredado del Registro de Windows (ej. socks4://127.0.0.1:23321)
+urllib.request.getproxies = lambda: {}  # type: ignore[assignment]
+if hasattr(urllib.request, "getproxies_registry"):
+    urllib.request.getproxies_registry = lambda: {}  # type: ignore[attr-defined]
+if hasattr(urllib.request, "getproxies_environment"):
+    urllib.request.getproxies_environment = lambda: {}  # type: ignore[attr-defined]
+
+for _pvar in ("ALL_PROXY", "all_proxy", "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"):
+    os.environ.pop(_pvar, None)
 
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=ENV_PATH, override=True)
@@ -40,7 +51,6 @@ def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
     from openai import OpenAI
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
-    # trust_env=False evita que un proxy SOCKS del registro de Windows bloquee httpx
     http_client = httpx.Client(trust_env=False, timeout=30.0)
     client = OpenAI(api_key=api_key, http_client=http_client)
     response = client.chat.completions.create(
@@ -56,9 +66,6 @@ def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
 
 
 def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
-    from google import genai
-    from google.genai import types
-
     configured_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
     candidate_models: List[str] = []
     for m in (
@@ -70,28 +77,36 @@ def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
         if m and m not in candidate_models:
             candidate_models.append(m)
 
-    http_client = httpx.Client(trust_env=False, timeout=30.0)
-    client = genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(httpx_client=http_client),
-    )
+    last_err = ""
+    with httpx.Client(trust_env=False, timeout=35.0) as client:
+        for model_name in candidate_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+            payload = {
+                "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "generationConfig": {"temperature": 0.3},
+            }
+            resp = client.post(url, params={"key": api_key}, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text = "".join(p.get("text", "") for p in parts).strip()
+                    if text:
+                        return text, f"gemini ({model_name})"
+            else:
+                try:
+                    err_json = resp.json()
+                    err_msg = err_json.get("error", {}).get("message", resp.text)
+                except Exception:
+                    err_msg = resp.text
+                last_err = f"HTTP {resp.status_code}: {err_msg}"
+                # Si la API key en sí es rechazada (400 API_KEY_INVALID / 403), no hace falta probar más modelos
+                if resp.status_code in (400, 401, 403) and "key" in last_err.lower():
+                    break
 
-    last_err = None
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.3,
-                ),
-            )
-            return response.text or "Sin respuesta del modelo Gemini.", f"gemini ({model_name})"
-        except Exception as err:
-            last_err = err
-            continue
-    raise RuntimeError(f"{last_err}")
+    raise RuntimeError(last_err or "Error desconocido en API de Gemini")
 
 
 def _build_quant_rag_report(
@@ -99,8 +114,7 @@ def _build_quant_rag_report(
 ) -> str:
     """
     Motor Cuantitativo Local RAG que procesa dinámicamente todas las estadísticas y cuotas
-    extraídas por Playwright/BS4 para el evento consultado cuando las APIs externas no responden
-    (por ejemplo, sin saldo/cuota en OpenAI o clave de Vertex/OAuth en lugar de AI Studio).
+    extraídas por Playwright/BS4 para el evento consultado cuando las APIs externas no responden.
     """
     participants = scraped_data.get("participants", [event, "Oponente"])
     comp_a = participants[0]
