@@ -3,22 +3,28 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SPORTS PREDICTOR // RAG TERMINAL v1.0</title>
+    <title>WINAMAX AI PREDICTOR // RAG SPORTSBOOK & ANALYTICS</title>
     <style>
         :root {
-            --bg-primary: #090c10;
-            --bg-secondary: #0d1117;
-            --bg-card: #161b22;
-            --border-color: #30363d;
-            --accent-green: #00ff9d;
-            --accent-green-dim: rgba(0, 255, 157, 0.12);
-            --accent-cyan: #58a6ff;
-            --accent-amber: #d29922;
-            --accent-red: #f85149;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
-            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --wina-bg-darkest: #0d0f14;
+            --wina-bg-main: #14171f;
+            --wina-bg-card: #1c202b;
+            --wina-bg-card-hover: #242938;
+            --wina-bg-elevated: #262c3a;
+            --wina-border: #2e3545;
+            --wina-red: #e41b23;
+            --wina-red-dark: #b81219;
+            --wina-red-glow: rgba(228, 27, 35, 0.28);
+            --wina-yellow: #ffc700;
+            --wina-yellow-hover: #ffd633;
+            --wina-yellow-dim: rgba(255, 199, 0, 0.14);
+            --wina-green: #00e676;
+            --wina-green-dim: rgba(0, 230, 118, 0.14);
+            --wina-text-white: #ffffff;
+            --wina-text-light: #d5d9e2;
+            --wina-text-muted: #8b93a6;
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
         }
 
         * {
@@ -28,542 +34,1819 @@
         }
 
         body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
+            background-color: var(--wina-bg-darkest);
+            color: var(--wina-text-white);
             font-family: var(--font-sans);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background-image: 
-                radial-gradient(circle at 50% 0%, rgba(0, 255, 157, 0.06) 0%, transparent 50%),
-                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-            background-size: 100% 100%, 32px 32px, 32px 32px;
+            overflow-x: hidden;
         }
 
-        header {
-            border-bottom: 1px solid var(--border-color);
-            background: rgba(13, 17, 23, 0.85);
-            backdrop-filter: blur(8px);
-            padding: 1rem 2rem;
+        /* =========================================================================
+           TOP NAVBAR (ESTILO WINAMAX)
+           ========================================================================= */
+        .topbar {
+            background: linear-gradient(180deg, #1b1f2a 0%, #12151c 100%);
+            border-top: 3px solid var(--wina-red);
+            border-bottom: 1px solid var(--wina-border);
+            height: 62px;
+            padding: 0 1.5rem;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
         }
 
-        .brand {
+        .brand-wrap {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            font-family: var(--font-mono);
+            gap: 0.85rem;
+        }
+
+        .wina-logo {
+            background: var(--wina-red);
+            color: var(--wina-text-white);
+            font-weight: 900;
+            font-style: italic;
+            font-size: 1.35rem;
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px var(--wina-red-glow);
+            letter-spacing: -1px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .brand-title {
+            font-weight: 900;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-title span.gold {
+            color: var(--wina-yellow);
+            font-style: italic;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .live-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: rgba(228, 27, 35, 0.15);
+            border: 1px solid var(--wina-red);
+            color: #ff6b70;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
             font-weight: 700;
-            font-size: 1.05rem;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .status-dot {
-            width: 10px;
-            height: 10px;
+        .live-dot {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background-color: var(--accent-green);
-            box-shadow: 0 0 10px var(--accent-green);
-            animation: pulse 2s infinite;
+            background: var(--wina-red);
+            box-shadow: 0 0 8px var(--wina-red);
+            animation: blink 1.5s infinite;
         }
 
-        @keyframes pulse {
+        @keyframes blink {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+            50% { opacity: 0.3; }
         }
 
-        .header-meta {
+        .llm-badge {
+            background: var(--wina-bg-elevated);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-yellow);
             font-family: var(--font-mono);
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            display: flex;
-            gap: 1rem;
-            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
         }
 
-        .badge {
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
-            padding: 0.25rem 0.6rem;
-            border-radius: 4px;
-            color: var(--accent-green);
-        }
-
-        main {
-            max-width: 1080px;
-            width: 100%;
-            margin: 2rem auto;
-            padding: 0 1.5rem;
-            flex: 1;
-        }
-
-        .terminal-window {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-            margin-bottom: 1.75rem;
-        }
-
-        .terminal-bar {
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.65rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-        }
-
-        .window-dots {
-            display: flex;
-            gap: 6px;
-        }
-
-        .window-dots span {
-            width: 11px;
-            height: 11px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .dot-red { background: #ff5f56; }
-        .dot-yellow { background: #ffbd2e; }
-        .dot-green { background: #27c93f; }
-
-        .terminal-body {
-            padding: 1.5rem;
-        }
-
-        .form-grid {
+        /* =========================================================================
+           LAYOUT DE 3 COLUMNAS (SIDEBAR DEPORTES + MAIN + HISTORIAL)
+           ========================================================================= */
+        .app-layout {
             display: grid;
-            grid-template-columns: 220px 1fr auto;
-            gap: 0.85rem;
-            align-items: stretch;
+            grid-template-columns: 260px 1fr 350px;
+            flex: 1;
+            min-height: calc(100vh - 62px);
+        }
+
+        @media (max-width: 1200px) {
+            .app-layout {
+                grid-template-columns: 230px 1fr;
+            }
+            .history-sidebar {
+                grid-column: 1 / -1;
+                border-left: none !important;
+                border-top: 1px solid var(--wina-border);
+            }
         }
 
         @media (max-width: 768px) {
-            .form-grid {
+            .app-layout {
                 grid-template-columns: 1fr;
             }
         }
 
-        label {
-            display: block;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin-bottom: 0.45rem;
-            letter-spacing: 0.05em;
+        /* =========================================================================
+           BARRA LATERAL IZQUIERDA (SELECTOR DE DEPORTE ESTILO WINAMAX)
+           ========================================================================= */
+        .sports-sidebar {
+            background: var(--wina-bg-main);
+            border-right: 1px solid var(--wina-border);
+            padding: 1.25rem 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
-        select, input[type="text"] {
+        .sidebar-section-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--wina-text-muted);
+            padding: 0 0.65rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sport-nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .sport-nav-btn {
             width: 100%;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.8rem 1rem;
-            border-radius: 6px;
-            font-family: var(--font-mono);
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--wina-text-light);
+            padding: 0.75rem 0.85rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             font-size: 0.92rem;
+            font-weight: 700;
+            transition: all 0.18s ease;
+            text-align: left;
+            position: relative;
+        }
+
+        .sport-nav-btn:hover {
+            background: var(--wina-bg-card);
+            color: var(--wina-text-white);
+        }
+
+        .sport-nav-btn.active {
+            background: linear-gradient(90deg, rgba(228, 27, 35, 0.22) 0%, rgba(28, 32, 43, 0.9) 100%);
+            border-color: rgba(228, 27, 35, 0.5);
+            color: var(--wina-text-white);
+            box-shadow: inset 4px 0 0 var(--wina-red);
+        }
+
+        .sport-left {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .sport-icon {
+            font-size: 1.2rem;
+            width: 26px;
+            text-align: center;
+        }
+
+        .sport-count {
+            background: var(--wina-bg-elevated);
+            color: var(--wina-text-muted);
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .sport-nav-btn.active .sport-count {
+            background: var(--wina-red);
+            color: var(--wina-text-white);
+        }
+
+        /* Fuentes de scraping activas en el sidebar */
+        .sources-panel {
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
+            padding: 0.9rem;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+            font-size: 0.8rem;
+            color: var(--wina-text-light);
+        }
+
+        .source-item:last-child {
+            border-bottom: none;
+        }
+
+        .source-status {
+            color: var(--wina-green);
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        /* Estadísticas rápidas en el sidebar */
+        .sidebar-stats-card {
+            margin-top: auto;
+            background: linear-gradient(135deg, #1c202b 0%, #151821 100%);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
+            padding: 0.9rem;
+            font-size: 0.8rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+            color: var(--wina-text-muted);
+        }
+
+        .stat-row strong {
+            color: var(--wina-yellow);
+            font-family: var(--font-mono);
+        }
+
+        /* =========================================================================
+           ZONA CENTRAL PRINCIPAL (BUSCADOR + PARTIDOS DESTACADOS + RESULTADO)
+           ========================================================================= */
+        .main-workspace {
+            padding: 1.5rem 1.75rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Buscador Hero estilo Winamax */
+        .hero-search-card {
+            background: linear-gradient(135deg, #212634 0%, #171a24 100%);
+            border: 1px solid var(--wina-border);
+            border-radius: 10px;
+            padding: 1.35rem 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-search-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--wina-red) 0%, var(--wina-yellow) 100%);
+        }
+
+        .hero-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .active-sport-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .active-sport-tag {
+            background: var(--wina-red);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            font-weight: 800;
+        }
+
+        .search-form-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.85rem;
+        }
+
+        @media (max-width: 640px) {
+            .search-form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            background: var(--wina-bg-darkest);
+            border: 2px solid var(--wina-border);
+            color: var(--wina-text-white);
+            padding: 0.9rem 2.6rem 0.9rem 1.1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        select:focus, input[type="text"]:focus {
-            border-color: var(--accent-green);
-            box-shadow: 0 0 0 3px var(--accent-green-dim);
+        .input-wrapper input:focus {
+            border-color: var(--wina-yellow);
+            box-shadow: 0 0 0 3px var(--wina-yellow-dim);
         }
 
-        button.btn-predict {
-            background: var(--accent-green);
-            color: #05080a;
+        .clear-input-btn {
+            position: absolute;
+            right: 10px;
+            background: transparent;
             border: none;
-            border-radius: 6px;
-            padding: 0 1.6rem;
-            font-family: var(--font-mono);
-            font-weight: 700;
-            font-size: 0.92rem;
+            color: var(--wina-text-muted);
+            font-size: 1.1rem;
             cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+            padding: 4px;
+        }
+
+        .clear-input-btn:hover {
+            color: var(--wina-text-white);
+        }
+
+        .btn-wina-submit {
+            background: linear-gradient(180deg, #f2222a 0%, #c91219 100%);
+            color: var(--wina-text-white);
+            border: 1px solid #ff5a60;
+            border-radius: 8px;
+            padding: 0 1.75rem;
+            font-weight: 900;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            height: 45px;
-            align-self: end;
+            gap: 0.6rem;
+            box-shadow: 0 4px 15px var(--wina-red-glow);
+            transition: transform 0.15s, filter 0.15s;
+            min-height: 50px;
         }
 
-        button.btn-predict:hover:not(:disabled) {
-            box-shadow: 0 0 18px rgba(0, 255, 157, 0.45);
+        .btn-wina-submit:hover:not(:disabled) {
+            filter: brightness(1.12);
             transform: translateY(-1px);
         }
 
-        button.btn-predict:disabled {
-            opacity: 0.5;
+        .btn-wina-submit:disabled {
+            opacity: 0.55;
             cursor: not-allowed;
         }
 
-        .sources-bar {
-            margin-top: 1.15rem;
-            padding-top: 1rem;
-            border-top: 1px dashed var(--border-color);
+        /* Cartelera de Eventos Rápidos (Estilo Cuotas Winamax) */
+        .featured-section-header {
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
+            margin-bottom: 0.65rem;
+        }
+
+        .featured-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--wina-text-muted);
+            letter-spacing: 0.06em;
+        }
+
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
             gap: 0.75rem;
         }
 
-        .source-chips {
+        .match-card-mini {
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
+            padding: 0.8rem 0.95rem;
+            cursor: pointer;
+            transition: all 0.16s ease;
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.45rem;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .match-card-mini:hover {
+            background: var(--wina-bg-card-hover);
+            border-color: var(--wina-yellow);
+            transform: translateY(-2px);
+        }
+
+        .match-card-top {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
+            font-size: 0.7rem;
+            color: var(--wina-text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
-        .source-chip {
-            font-family: var(--font-mono);
-            font-size: 0.72rem;
-            padding: 0.2rem 0.55rem;
-            border-radius: 4px;
-            background: rgba(88, 166, 255, 0.1);
-            border: 1px solid rgba(88, 166, 255, 0.3);
-            color: var(--accent-cyan);
+        .match-card-teams {
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: var(--wina-text-white);
         }
 
-        .preset-group {
+        .wina-odds-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
+            gap: 0.45rem;
         }
 
-        .preset-btn {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
+        .wina-odd-pill {
+            flex: 1;
+            background: var(--wina-yellow);
+            color: #0d0f14;
+            border-radius: 5px;
+            padding: 0.32rem 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            font-weight: 900;
+            transition: background 0.15s, transform 0.1s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .wina-odd-pill:hover {
+            background: var(--wina-yellow-hover);
+            transform: scale(1.03);
+        }
+
+        .wina-odd-pill span.label {
+            font-weight: 700;
+            opacity: 0.78;
+            font-size: 0.68rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 65%;
+        }
+
+        /* Loader Animado con Progreso */
+        #loadingBox {
+            display: none;
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            border-radius: 10px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .progress-track {
+            width: 100%;
+            max-width: 480px;
+            height: 8px;
+            background: var(--wina-bg-darkest);
+            border-radius: 99px;
+            margin: 1rem auto;
+            overflow: hidden;
+            border: 1px solid var(--wina-border);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, var(--wina-red), var(--wina-yellow));
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+
+        .step-badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .step-badge {
+            font-size: 0.75rem;
             font-family: var(--font-mono);
-            font-size: 0.72rem;
-            padding: 0.25rem 0.6rem;
-            border-radius: 4px;
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            background: var(--wina-bg-darkest);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-muted);
+        }
+
+        .step-badge.active {
+            border-color: var(--wina-yellow);
+            color: var(--wina-yellow);
+            background: var(--wina-yellow-dim);
+        }
+
+        /* =========================================================================
+           PANEL DE RESULTADOS DINÁMICO CON PESTAÑAS (TABS)
+           ========================================================================= */
+        #resultContainer {
+            display: none;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .scoreboard-banner {
+            background: linear-gradient(135deg, #24151a 0%, #181c26 60%, #1c212e 100%);
+            border: 1px solid var(--wina-border);
+            border-left: 5px solid var(--wina-red);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .scoreboard-left h2 {
+            font-size: 1.35rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-top: 0.25rem;
+        }
+
+        .scoreboard-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.75rem;
+            color: var(--wina-text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .scoreboard-odds {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .big-odd-box {
+            background: var(--wina-yellow);
+            color: #0d0f14;
+            border-radius: 8px;
+            padding: 0.5rem 0.9rem;
+            min-width: 110px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.15s;
+            border: none;
+        }
+
+        .big-odd-box:hover {
+            transform: translateY(-2px);
+            background: var(--wina-yellow-hover);
+        }
+
+        .big-odd-box .odd-team {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: block;
+            opacity: 0.85;
+        }
+
+        .big-odd-box .odd-val {
+            font-size: 1.15rem;
+            font-weight: 900;
+            font-family: var(--font-mono);
+        }
+
+        /* Tabs de Navegación del Resultado */
+        .result-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--wina-border);
+            padding-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-muted);
+            padding: 0.6rem 1.1rem;
+            border-radius: 7px;
+            font-weight: 800;
+            font-size: 0.84rem;
             cursor: pointer;
             transition: all 0.15s;
         }
 
-        .preset-btn:hover {
-            border-color: var(--accent-green);
-            color: var(--accent-green);
+        .tab-btn:hover {
+            color: var(--wina-text-white);
+            background: var(--wina-bg-card-hover);
         }
 
-        /* Loader / Spinner */
-        #loadingBox {
+        .tab-btn.active {
+            background: var(--wina-red);
+            border-color: var(--wina-red);
+            color: var(--wina-text-white);
+        }
+
+        .tab-pane {
             display: none;
-            padding: 2rem 1.5rem;
-            text-align: center;
-            font-family: var(--font-mono);
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            border-radius: 10px;
+            padding: 1.5rem;
         }
 
-        .spinner {
-            width: 42px;
-            height: 42px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 0.85s linear infinite;
-            margin: 0 auto 1rem;
+        .tab-pane.active {
+            display: block;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* Contenido del Pronóstico Formateado */
+        .prediction-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--wina-border);
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
-        .log-stream {
-            color: var(--accent-green);
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
+        .action-btn {
+            background: var(--wina-bg-elevated);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-light);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
         }
 
-        /* Results section */
-        #resultContainer {
-            display: none;
+        .action-btn:hover {
+            border-color: var(--wina-yellow);
+            color: var(--wina-yellow);
         }
 
-        .result-grid {
-            display: grid;
-            grid-template-columns: 1.6fr 1fr;
-            gap: 1.25rem;
-        }
-
-        @media (max-width: 900px) {
-            .result-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .prediction-content {
+        .prediction-rendered {
             font-size: 0.96rem;
-            line-height: 1.7;
-            color: var(--text-primary);
+            line-height: 1.75;
+            color: var(--wina-text-light);
             white-space: pre-wrap;
         }
 
-        .prediction-content h1,
-        .prediction-content h2,
-        .prediction-content h3 {
-            color: var(--accent-green);
+        /* Barras Comparativas Face-to-Face */
+        .h2h-row {
+            margin-bottom: 1.15rem;
+        }
+
+        .h2h-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.84rem;
+            font-weight: 800;
+            margin-bottom: 0.35rem;
+        }
+
+        .h2h-bar-wrap {
+            display: flex;
+            height: 12px;
+            border-radius: 99px;
+            overflow: hidden;
+            background: var(--wina-bg-darkest);
+            gap: 3px;
+        }
+
+        .h2h-bar-a {
+            background: var(--wina-red);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .h2h-bar-b {
+            background: var(--wina-yellow);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        /* Simulador de Apuesta y Calculadora EV+ */
+        .ev-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .ev-input-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--wina-text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .ev-input-group input {
+            width: 100%;
+            background: var(--wina-bg-darkest);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-white);
+            padding: 0.65rem 0.85rem;
+            border-radius: 6px;
             font-family: var(--font-mono);
-            margin: 1rem 0 0.5rem;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
+        }
+
+        .ev-results-box {
+            background: var(--wina-bg-darkest);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
+            padding: 1.15rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .ev-stat-val {
+            font-size: 1.35rem;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            margin-top: 0.25rem;
         }
 
         .json-viewer {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
+            background: var(--wina-bg-darkest);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
             padding: 1rem;
             font-family: var(--font-mono);
             font-size: 0.78rem;
-            color: var(--accent-cyan);
-            overflow-x: auto;
-            max-height: 540px;
-            overflow-y: auto;
+            color: var(--wina-yellow);
+            max-height: 480px;
+            overflow: auto;
             white-space: pre;
+        }
+
+        /* =========================================================================
+           COLUMNA DERECHA: HISTORIAL DE BÚSQUEDAS Y RESPUESTAS
+           ========================================================================= */
+        .history-sidebar {
+            background: var(--wina-bg-main);
+            border-left: 1px solid var(--wina-border);
+            padding: 1.25rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            max-height: calc(100vh - 62px);
+            position: sticky;
+            top: 62px;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .history-title {
+            font-size: 0.88rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-clear-history {
+            background: transparent;
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.55rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-clear-history:hover {
+            border-color: var(--wina-red);
+            color: #ff6b70;
+        }
+
+        .history-filter-bar {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .hist-filter-chip {
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.55rem;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .hist-filter-chip.active {
+            background: var(--wina-yellow);
+            color: #0d0f14;
+            border-color: var(--wina-yellow);
+        }
+
+        .history-search-input {
+            width: 100%;
+            background: var(--wina-bg-darkest);
+            border: 1px solid var(--wina-border);
+            color: var(--wina-text-white);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            padding-right: 0.2rem;
+        }
+
+        .history-card {
+            background: var(--wina-bg-card);
+            border: 1px solid var(--wina-border);
+            border-radius: 8px;
+            padding: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .history-card:hover {
+            border-color: var(--wina-yellow);
+            background: var(--wina-bg-card-hover);
+        }
+
+        .history-card.active {
+            border-left: 4px solid var(--wina-red);
+            background: var(--wina-bg-elevated);
+        }
+
+        .history-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: var(--wina-text-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .history-sport-tag {
+            color: var(--wina-yellow);
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .history-event-name {
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: var(--wina-text-white);
+            margin-bottom: 0.4rem;
+        }
+
+        .history-snippet {
+            font-size: 0.76rem;
+            color: var(--wina-text-muted);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.45;
+        }
+
+        .history-card.expanded .history-snippet {
+            -webkit-line-clamp: unset;
+            white-space: pre-wrap;
+            color: var(--wina-text-light);
+            background: var(--wina-bg-darkest);
+            padding: 0.6rem;
+            border-radius: 6px;
+            margin-top: 0.4rem;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .history-card-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.55rem;
+            padding-top: 0.45rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.07);
+            font-size: 0.7rem;
+        }
+
+        .hist-btn-link {
+            background: none;
+            border: none;
+            color: var(--wina-yellow);
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.72rem;
+        }
+
+        .hist-btn-del {
+            background: none;
+            border: none;
+            color: var(--wina-text-muted);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .hist-btn-del:hover {
+            color: var(--wina-red);
         }
 
         .error-banner {
             display: none;
-            background: rgba(248, 81, 73, 0.12);
-            border: 1px solid var(--accent-red);
-            color: #ffa198;
-            padding: 1rem 1.25rem;
-            border-radius: 6px;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            margin-bottom: 1.5rem;
+            background: rgba(228, 27, 35, 0.16);
+            border: 1px solid var(--wina-red);
+            color: #ff8a8f;
+            padding: 0.95rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.88rem;
         }
 
-        footer {
-            text-align: center;
-            padding: 1.5rem;
-            border-top: 1px solid var(--border-color);
-            font-family: var(--font-mono);
-            font-size: 0.76rem;
-            color: var(--text-secondary);
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--wina-bg-elevated);
+            border-left: 4px solid var(--wina-yellow);
+            color: var(--wina-text-white);
+            padding: 0.75rem 1.15rem;
+            border-radius: 6px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+            font-size: 0.84rem;
+            font-weight: 700;
+            display: none;
+            z-index: 999;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="brand">
-            <span class="status-dot"></span>
-            <span>SPORTS_PREDICTOR // RAG_ENGINE</span>
+    <!-- CABECERA WINAMAX -->
+    <header class="topbar">
+        <div class="brand-wrap">
+            <div class="wina-logo">W</div>
+            <div class="brand-title">
+                WINAMAX <span class="gold">RAG PREDICTOR</span>
+            </div>
         </div>
-        <div class="header-meta">
-            <span>PLAYWRIGHT + BS4</span>
-            <span class="badge" id="providerBadge">LLM: AUTO</span>
+        <div class="topbar-right">
+            <div class="live-pill">
+                <span class="live-dot"></span>
+                <span>PLAYWRIGHT STEALTH + BS4</span>
+            </div>
+            <div class="llm-badge" id="providerBadge">LLM: CONECTANDO...</div>
         </div>
     </header>
 
-    <main>
-        <!-- Consola de Búsqueda -->
-        <section class="terminal-window">
-            <div class="terminal-bar">
-                <div class="window-dots">
-                    <span class="dot-red"></span>
-                    <span class="dot-yellow"></span>
-                    <span class="dot-green"></span>
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="app-layout">
+
+        <!-- 1. BARRA LATERAL IZQUIERDA: SELECTOR DE DEPORTE -->
+        <aside class="sports-sidebar">
+            <div>
+                <div class="sidebar-section-title">
+                    <span>Deportes</span>
+                    <span>4</span>
                 </div>
-                <span>query_console.sh — POST /api/predict</span>
-                <span>UTF-8</span>
+                <ul class="sport-nav-list" id="sportNavList">
+                    <li>
+                        <button type="button" class="sport-nav-btn active" data-sport="mma">
+                            <span class="sport-left">
+                                <span class="sport-icon">🥊</span>
+                                <span>MMA / UFC</span>
+                            </span>
+                            <span class="sport-count">4</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="sport-nav-btn" data-sport="football">
+                            <span class="sport-left">
+                                <span class="sport-icon">⚽</span>
+                                <span>Fútbol</span>
+                            </span>
+                            <span class="sport-count">6</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="sport-nav-btn" data-sport="basketball">
+                            <span class="sport-left">
+                                <span class="sport-icon">🏀</span>
+                                <span>Baloncesto</span>
+                            </span>
+                            <span class="sport-count">4</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="sport-nav-btn" data-sport="tennis">
+                            <span class="sport-left">
+                                <span class="sport-icon">🎾</span>
+                                <span>Tenis</span>
+                            </span>
+                            <span class="sport-count">4</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
-            <div class="terminal-body">
+
+            <div>
+                <div class="sidebar-section-title">
+                    <span>Fuentes Activas</span>
+                    <span style="color: var(--wina-green);">ONLINE</span>
+                </div>
+                <div class="sources-panel" id="sidebarSourcesList">
+                    <!-- Dinámico por JS -->
+                </div>
+            </div>
+
+            <div class="sidebar-stats-card">
+                <div class="stat-row">
+                    <span>Pronósticos en Historial:</span>
+                    <strong id="totalPredictionsStat">0</strong>
+                </div>
+                <div class="stat-row">
+                    <span>Deporte Activo:</span>
+                    <strong id="activeSportStat">MMA / UFC</strong>
+                </div>
+                <div class="stat-row" style="margin-bottom: 0;">
+                    <span>Motor Scraping:</span>
+                    <strong style="color: var(--wina-green);">Playwright</strong>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. ZONA CENTRAL: BUSCADOR, CARTELERA DE CUOTAS Y RESULTADOS -->
+        <main class="main-workspace">
+
+            <!-- Buscador Principal -->
+            <section class="hero-search-card">
+                <div class="hero-header">
+                    <div class="active-sport-banner" id="activeSportBanner">
+                        <span id="activeSportIcon">🥊</span>
+                        <span id="activeSportTitle">MMA / UFC — ANALIZADOR DE COMBATES</span>
+                    </div>
+                    <span class="active-sport-tag">CUOTAS & RAG EN VIVO</span>
+                </div>
+
                 <form id="predictForm">
-                    <div class="form-grid">
-                        <div>
-                            <label for="sportSelect">// Deporte</label>
-                            <select id="sportSelect" required>
-                                <option value="mma">MMA / UFC</option>
-                                <option value="football">Fútbol</option>
-                                <option value="basketball">Baloncesto</option>
-                                <option value="tennis">Tenis</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="eventInput">// Evento o Enfrentamiento</label>
+                    <div class="search-form-row">
+                        <div class="input-wrapper">
                             <input
                                 type="text"
                                 id="eventInput"
-                                placeholder="Ej: Ilia Topuria vs Max Holloway"
+                                placeholder="Escribe el combate o partido (ej: Ilia Topuria vs Max Holloway)"
                                 value="Ilia Topuria vs Max Holloway"
                                 required
                             />
+                            <button type="button" class="clear-input-btn" id="clearInputBtn" title="Limpiar">✕</button>
                         </div>
-                        <button type="submit" class="btn-predict" id="submitBtn">
-                            <span>EJECUTAR RAG</span>
-                            <span>→</span>
+                        <button type="submit" class="btn-wina-submit" id="submitBtn">
+                            <span>⚡ PRONOSTICAR AHORA</span>
                         </button>
                     </div>
                 </form>
+            </section>
 
-                <div class="sources-bar">
-                    <div class="source-chips" id="sourcesList">
-                        <!-- Renderizado dinámico por JS -->
+            <!-- Cartelera Rápida de Enfrentamientos Destacados con Cuotas Winamax -->
+            <section>
+                <div class="featured-section-header">
+                    <span class="featured-title" id="featuredSectionTitle">🔥 CARTELERA DESTACADA — PULSA PARA ANALIZAR</span>
+                </div>
+                <div class="featured-grid" id="featuredGrid">
+                    <!-- Renderizado dinámico según el deporte elegido en la barra lateral -->
+                </div>
+            </section>
+
+            <!-- Banner de Error -->
+            <div class="error-banner" id="errorBanner"></div>
+
+            <!-- Barra de Progreso Animada -->
+            <section id="loadingBox">
+                <div style="font-weight: 900; font-size: 1.05rem; text-transform: uppercase;">
+                    Extrayendo Telemetría y Calculando Valor Esperado (EV+)...
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="loadingStepText" style="color: var(--wina-yellow); font-family: var(--font-mono); font-size: 0.84rem;">
+                    Iniciando navegador headless Playwright...
+                </div>
+                <div class="step-badges">
+                    <span class="step-badge active" id="stepBadge1">1. Playwright Stealth</span>
+                    <span class="step-badge" id="stepBadge2">2. BeautifulSoup4 DOM</span>
+                    <span class="step-badge" id="stepBadge3">3. Inferencia LLM RAG</span>
+                </div>
+            </section>
+
+            <!-- Dashboard de Resultados -->
+            <section id="resultContainer">
+                <!-- Marcador Superior con Cuotas Amarillas Winamax -->
+                <div class="scoreboard-banner">
+                    <div class="scoreboard-left">
+                        <div class="scoreboard-meta">
+                            <span id="resSportBadge" style="color: var(--wina-yellow); font-weight: 800;">MMA / UFC</span>
+                            <span>•</span>
+                            <span id="resTimestamp">--:--</span>
+                            <span>•</span>
+                            <span id="resProvider">GEMINI</span>
+                        </div>
+                        <h2 id="resEventTitle">Ilia Topuria vs Max Holloway</h2>
                     </div>
-                    <div class="preset-group">
-                        <button type="button" class="preset-btn" data-sport="mma" data-event="Ilia Topuria vs Max Holloway">UFC: Topuria vs Holloway</button>
-                        <button type="button" class="preset-btn" data-sport="football" data-event="Real Madrid vs Barcelona">Fútbol: Real Madrid vs Barça</button>
-                        <button type="button" class="preset-btn" data-sport="basketball" data-event="Boston Celtics vs Los Angeles Lakers">NBA: Celtics vs Lakers</button>
-                        <button type="button" class="preset-btn" data-sport="tennis" data-event="Carlos Alcaraz vs Jannik Sinner">ATP: Alcaraz vs Sinner</button>
+                    <div class="scoreboard-odds" id="scoreboardOdds">
+                        <!-- Botones de cuota amarillos generados por JS -->
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- Error Banner -->
-        <div class="error-banner" id="errorBanner"></div>
+                <!-- Pestañas Interactivas -->
+                <div class="result-tabs">
+                    <button type="button" class="tab-btn active" data-tab="tabPrediction">🎯 Informe Predictivo RAG</button>
+                    <button type="button" class="tab-btn" data-tab="tabComparison">📊 Comparativa Cara a Cara</button>
+                    <button type="button" class="tab-btn" data-tab="tabCalculator">🧮 Simulador de Cuota & EV+</button>
+                    <button type="button" class="tab-btn" data-tab="tabJson">💻 Telemetría JSON</button>
+                </div>
 
-        <!-- Spinner de Carga -->
-        <section class="terminal-window" id="loadingBox">
-            <div class="spinner"></div>
-            <div>Ejecutando pipeline de extracción e inferencia RAG...</div>
-            <div class="log-stream" id="loadingStep">[1/3] Iniciando navegador headless Playwright (anti-Cloudflare)...</div>
-        </section>
-
-        <!-- Resultados -->
-        <div id="resultContainer">
-            <div class="result-grid">
-                <!-- Columna Izquierda: Pronóstico RAG -->
-                <section class="terminal-window">
-                    <div class="terminal-bar">
-                        <div class="window-dots">
-                            <span class="dot-red"></span>
-                            <span class="dot-yellow"></span>
-                            <span class="dot-green"></span>
+                <!-- PESTAÑA 1: Pronóstico IA -->
+                <div class="tab-pane active" id="tabPrediction">
+                    <div class="prediction-toolbar">
+                        <span style="font-size: 0.8rem; color: var(--wina-text-muted); font-family: var(--font-mono);" id="sourcesSummaryLabel"></span>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="action-btn" id="copyPredictionBtn">📋 Copiar Pronóstico</button>
+                            <button type="button" class="action-btn" id="downloadPredictionBtn">💾 Descargar .TXT</button>
                         </div>
-                        <span id="predictionHeader">rag_prediction_output.md</span>
-                        <span id="timestampLabel"></span>
                     </div>
-                    <div class="terminal-body">
-                        <div class="prediction-content" id="predictionOutput"></div>
-                    </div>
-                </section>
+                    <div class="prediction-rendered" id="predictionOutput"></div>
+                </div>
 
-                <!-- Columna Derecha: Datos Extraídos (Playwright + BS4) -->
-                <section class="terminal-window">
-                    <div class="terminal-bar">
-                        <div class="window-dots">
-                            <span class="dot-red"></span>
-                            <span class="dot-yellow"></span>
-                            <span class="dot-green"></span>
+                <!-- PESTAÑA 2: Comparativa Cara a Cara -->
+                <div class="tab-pane" id="tabComparison">
+                    <h3 style="margin-bottom: 1rem; font-size: 0.95rem; text-transform: uppercase; color: var(--wina-yellow);">
+                        Comparativa Estadística Directa (Extraída por Playwright/BS4)
+                    </h3>
+                    <div id="h2hContainer"></div>
+                </div>
+
+                <!-- PESTAÑA 3: Calculadora de Valor Esperado (EV+) y Stake -->
+                <div class="tab-pane" id="tabCalculator">
+                    <h3 style="margin-bottom: 1rem; font-size: 0.95rem; text-transform: uppercase; color: var(--wina-yellow);">
+                        Simulador de Apuesta Winamax & Calculadora Kelly / EV+
+                    </h3>
+                    <div class="ev-grid">
+                        <div class="ev-input-group">
+                            <label for="calcStake">Importe de Apuesta (€)</label>
+                            <input type="number" id="calcStake" value="25" min="1" step="5" />
                         </div>
-                        <span>scraped_telemetry.json</span>
-                        <span>RAW DATA</span>
+                        <div class="ev-input-group">
+                            <label for="calcOdd">Cuota Decimal Winamax</label>
+                            <input type="number" id="calcOdd" value="1.85" min="1.01" step="0.05" />
+                        </div>
+                        <div class="ev-input-group">
+                            <label for="calcRealProb">Probabilidad Real Estimada IA (%)</label>
+                            <input type="number" id="calcRealProb" value="60" min="1" max="99" step="1" />
+                        </div>
                     </div>
-                    <div class="terminal-body">
-                        <div class="json-viewer" id="scrapedJsonOutput"></div>
+                    <div class="ev-results-box">
+                        <div>
+                            <div style="font-size: 0.72rem; color: var(--wina-text-muted);">GANANCIA POTENCIAL</div>
+                            <div class="ev-stat-val" id="calcPayout" style="color: var(--wina-yellow);">46.25 €</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.72rem; color: var(--wina-text-muted);">BENEFICIO NETO</div>
+                            <div class="ev-stat-val" id="calcProfit">+21.25 €</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.72rem; color: var(--wina-text-muted);">PROB. IMPLÍCITA CASA</div>
+                            <div class="ev-stat-val" id="calcImplied">54.1%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.72rem; color: var(--wina-text-muted);">VALOR ESPERADO (EV)</div>
+                            <div class="ev-stat-val" id="calcEvValue">+11.0% (EV+)</div>
+                        </div>
                     </div>
-                </section>
-            </div>
-        </div>
-    </main>
+                </div>
 
-    <footer>
-        OPEN-SOURCE SPORTS PREDICTOR // FASTAPI + PLAYWRIGHT + BEAUTIFULSOUP4 + LLM RAG
-    </footer>
+                <!-- PESTAÑA 4: JSON Crudo -->
+                <div class="tab-pane" id="tabJson">
+                    <div class="json-viewer" id="scrapedJsonOutput"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 3. BARRA LATERAL DERECHA: HISTORIAL DE BÚSQUEDAS CON RESPUESTA INCLUIDA -->
+        <aside class="history-sidebar">
+            <div class="history-header">
+                <div class="history-title">
+                    <span>📜 Historial RAG</span>
+                    <span class="sport-count" id="historyBadgeCount">0</span>
+                </div>
+                <button type="button" class="btn-clear-history" id="clearHistoryBtn">Vaciar</button>
+            </div>
+
+            <input
+                type="text"
+                class="history-search-input"
+                id="historySearchInput"
+                placeholder="🔍 Filtrar combate o equipo en el historial..."
+            />
+
+            <div class="history-filter-bar" id="historyFilterBar">
+                <button type="button" class="hist-filter-chip active" data-filter="all">Todos</button>
+                <button type="button" class="hist-filter-chip" data-filter="mma">🥊 MMA</button>
+                <button type="button" class="hist-filter-chip" data-filter="football">⚽ Fútbol</button>
+                <button type="button" class="hist-filter-chip" data-filter="basketball">🏀 NBA</button>
+                <button type="button" class="hist-filter-chip" data-filter="tennis">🎾 Tenis</button>
+            </div>
+
+            <div class="history-list" id="historyList">
+                <!-- Tarjetas de historial renderizadas dinámicamente -->
+            </div>
+        </aside>
+    </div>
+
+    <div class="toast" id="toastBox"></div>
 
     <script>
-        const SPORT_SOURCES = {
-            mma: ["UFCStats", "Tapology", "Sherdog", "BestFightOdds"],
-            football: ["FBref", "Understat", "SofaScore", "FotMob", "Flashscore", "OddsPortal"],
-            basketball: ["Basketball-Reference", "NBA.com/Stats", "Flashscore", "OddsPortal"],
-            tennis: ["Tennis Abstract", "ATP / WTA Tour", "TennisExplorer", "Flashscore"]
+        /* =========================================================================
+           CONFIGURACIÓN DE DEPORTES, FUENTES Y CARTELERA DESTACADA
+           ========================================================================= */
+        const SPORT_CONFIG = {
+            mma: {
+                name: "MMA / UFC",
+                icon: "🥊",
+                banner: "MMA / UFC — ANALIZADOR DE COMBATES",
+                placeholder: "Ej: Ilia Topuria vs Max Holloway",
+                sources: ["UFCStats", "Tapology", "Sherdog", "BestFightOdds"],
+                featured: [
+                    { league: "UFC Peso Pluma", event: "Ilia Topuria vs Max Holloway", a: "Topuria", oddA: "1.42", b: "Holloway", oddB: "2.95" },
+                    { league: "UFC Peso Ligero", event: "Islam Makhachev vs Arman Tsarukyan", a: "Makhachev", oddA: "1.36", b: "Tsarukyan", oddB: "3.20" },
+                    { league: "UFC Semipesado", event: "Alex Pereira vs Magomed Ankalaev", a: "Pereira", oddA: "1.78", b: "Ankalaev", oddB: "2.05" }
+                ]
+            },
+            football: {
+                name: "Fútbol",
+                icon: "⚽",
+                banner: "FÚTBOL — MODELOS xG & CUOTAS 1X2",
+                placeholder: "Ej: Real Madrid vs Barcelona",
+                sources: ["FBref", "Understat", "SofaScore", "FotMob", "Flashscore", "OddsPortal"],
+                featured: [
+                    { league: "LaLiga EA Sports", event: "Real Madrid vs Barcelona", a: "R. Madrid", oddA: "2.05", b: "Barcelona", oddB: "3.40" },
+                    { league: "UEFA Nations League", event: "España vs Bélgica", a: "España", oddA: "1.65", b: "Bélgica", oddB: "4.80" },
+                    { league: "Premier League", event: "Manchester City vs Arsenal", a: "Man City", oddA: "1.95", b: "Arsenal", oddB: "3.75" }
+                ]
+            },
+            basketball: {
+                name: "Baloncesto",
+                icon: "🏀",
+                banner: "BALONCESTO — NBA PACE & EFFICIENCY",
+                placeholder: "Ej: Boston Celtics vs Los Angeles Lakers",
+                sources: ["Basketball-Reference", "NBA.com/Stats", "Flashscore", "OddsPortal"],
+                featured: [
+                    { league: "NBA Regular Season", event: "Boston Celtics vs Los Angeles Lakers", a: "Celtics", oddA: "1.58", b: "Lakers", oddB: "2.45" },
+                    { league: "NBA Western Conf.", event: "Denver Nuggets vs Oklahoma City Thunder", a: "Nuggets", oddA: "1.82", b: "Thunder", oddB: "2.02" },
+                    { league: "EuroLeague", event: "Real Madrid Baloncesto vs Panathinaikos", a: "R. Madrid", oddA: "1.68", b: "PAO", oddB: "2.20" }
+                ]
+            },
+            tennis: {
+                name: "Tenis",
+                icon: "🎾",
+                banner: "TENIS — ATP / WTA SERVE & BREAK METRICS",
+                placeholder: "Ej: Carlos Alcaraz vs Jannik Sinner",
+                sources: ["Tennis Abstract", "ATP / WTA Tour", "TennisExplorer", "Flashscore"],
+                featured: [
+                    { league: "ATP Finals", event: "Carlos Alcaraz vs Jannik Sinner", a: "Alcaraz", oddA: "1.85", b: "Sinner", oddB: "1.98" },
+                    { league: "ATP Masters 1000", event: "Novak Djokovic vs Alexander Zverev", a: "Djokovic", oddA: "1.72", b: "Zverev", oddB: "2.15" },
+                    { league: "WTA Tour", event: "Aryna Sabalenka vs Iga Swiatek", a: "Sabalenka", oddA: "1.90", b: "Swiatek", oddB: "1.90" }
+                ]
+            }
         };
 
-        const sportSelect = document.getElementById("sportSelect");
+        let currentSport = "mma";
+        let historyData = [];
+        let activeHistoryId = null;
+        let currentHistoryFilter = "all";
+        let lastPredictionResult = null;
+
+        /* =========================================================================
+           REFERENCIAS DOM
+           ========================================================================= */
+        const sportNavBtns = document.querySelectorAll(".sport-nav-btn");
+        const sidebarSourcesList = document.getElementById("sidebarSourcesList");
+        const activeSportIcon = document.getElementById("activeSportIcon");
+        const activeSportTitle = document.getElementById("activeSportTitle");
+        const activeSportStat = document.getElementById("activeSportStat");
         const eventInput = document.getElementById("eventInput");
-        const sourcesList = document.getElementById("sourcesList");
+        const clearInputBtn = document.getElementById("clearInputBtn");
+        const featuredGrid = document.getElementById("featuredGrid");
         const predictForm = document.getElementById("predictForm");
         const submitBtn = document.getElementById("submitBtn");
         const loadingBox = document.getElementById("loadingBox");
-        const loadingStep = document.getElementById("loadingStep");
+        const progressFill = document.getElementById("progressFill");
+        const loadingStepText = document.getElementById("loadingStepText");
         const resultContainer = document.getElementById("resultContainer");
         const predictionOutput = document.getElementById("predictionOutput");
         const scrapedJsonOutput = document.getElementById("scrapedJsonOutput");
         const errorBanner = document.getElementById("errorBanner");
-        const timestampLabel = document.getElementById("timestampLabel");
         const providerBadge = document.getElementById("providerBadge");
+        const historyList = document.getElementById("historyList");
+        const historyBadgeCount = document.getElementById("historyBadgeCount");
+        const totalPredictionsStat = document.getElementById("totalPredictionsStat");
+        const historySearchInput = document.getElementById("historySearchInput");
+        const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+        const toastBox = document.getElementById("toastBox");
 
-        function renderSourceChips(sport) {
-            const sources = SPORT_SOURCES[sport] || [];
-            sourcesList.innerHTML = `<span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-secondary);">Módulos activos:</span>`;
-            sources.forEach(src => {
-                const span = document.createElement("span");
-                span.className = "source-chip";
-                span.textContent = src;
-                sourcesList.appendChild(span);
+        function showToast(msg) {
+            toastBox.textContent = msg;
+            toastBox.style.display = "block";
+            setTimeout(() => { toastBox.style.display = "none"; }, 2800);
+        }
+
+        /* =========================================================================
+           CAMBIO DE DEPORTE EN BARRA LATERAL
+           ========================================================================= */
+        function selectSport(sportKey, updateInputDefault = false) {
+            currentSport = sportKey;
+            const cfg = SPORT_CONFIG[sportKey] || SPORT_CONFIG.mma;
+
+            sportNavBtns.forEach(btn => {
+                btn.classList.toggle("active", btn.getAttribute("data-sport") === sportKey);
+            });
+
+            activeSportIcon.textContent = cfg.icon;
+            activeSportTitle.textContent = cfg.banner;
+            activeSportStat.textContent = cfg.name;
+            eventInput.placeholder = cfg.placeholder;
+
+            if (updateInputDefault && cfg.featured.length > 0) {
+                eventInput.value = cfg.featured[0].event;
+            }
+
+            // Renderizar fuentes activas en el sidebar
+            sidebarSourcesList.innerHTML = cfg.sources.map(src => `
+                <div class="source-item">
+                    <span>${src}</span>
+                    <span class="source-status">● READY</span>
+                </div>
+            `).join("");
+
+            // Renderizar cartelera de partidos destacados con cuotas estilo Winamax
+            featuredGrid.innerHTML = cfg.featured.map(item => `
+                <div class="match-card-mini" data-event="${item.event}">
+                    <div class="match-card-top">
+                        <span>${cfg.icon} ${item.league}</span>
+                        <span style="color: var(--wina-yellow);">ANALIZAR →</span>
+                    </div>
+                    <div class="match-card-teams">${item.event}</div>
+                    <div class="wina-odds-row">
+                        <button type="button" class="wina-odd-pill" data-odd="${item.oddA}">
+                            <span class="label">${item.a}</span>
+                            <span>${item.oddA}</span>
+                        </button>
+                        <button type="button" class="wina-odd-pill" data-odd="${item.oddB}">
+                            <span class="label">${item.b}</span>
+                            <span>${item.oddB}</span>
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+
+            document.querySelectorAll(".match-card-mini").forEach(card => {
+                card.addEventListener("click", (e) => {
+                    const oddBtn = e.target.closest(".wina-odd-pill");
+                    if (oddBtn) {
+                        const oddVal = oddBtn.getAttribute("data-odd");
+                        document.getElementById("calcOdd").value = oddVal;
+                        updateEvCalculator();
+                    }
+                    eventInput.value = card.getAttribute("data-event");
+                    runPrediction(currentSport, eventInput.value);
+                });
             });
         }
 
-        sportSelect.addEventListener("change", (e) => {
-            renderSourceChips(e.target.value);
-        });
-
-        document.querySelectorAll(".preset-btn").forEach(btn => {
+        sportNavBtns.forEach(btn => {
             btn.addEventListener("click", () => {
-                const sport = btn.getAttribute("data-sport");
-                const ev = btn.getAttribute("data-event");
-                sportSelect.value = sport;
-                eventInput.value = ev;
-                renderSourceChips(sport);
+                selectSport(btn.getAttribute("data-sport"), true);
             });
         });
 
-        // Inicializar chips por defecto
-        renderSourceChips(sportSelect.value);
+        clearInputBtn.addEventListener("click", () => {
+            eventInput.value = "";
+            eventInput.focus();
+        });
 
-        // Comprobar estado del backend al cargar
-        fetch("/api/health")
-            .then(r => r.json())
-            .then(data => {
-                if (data.llm_provider) {
-                    providerBadge.textContent = `LLM: ${data.llm_provider.toUpperCase()}`;
+        /* =========================================================================
+           PESTAÑAS (TABS) DE RESULTADOS
+           ========================================================================= */
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const targetId = btn.getAttribute("data-tab");
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById(targetId).classList.add("active");
+            });
+        });
+
+        /* =========================================================================
+           CALCULADORA INTERACTIVA DE VALOR ESPERADO (EV+)
+           ========================================================================= */
+        function updateEvCalculator() {
+            const stake = parseFloat(document.getElementById("calcStake").value) || 0;
+            const odd = parseFloat(document.getElementById("calcOdd").value) || 1;
+            const realProb = (parseFloat(document.getElementById("calcRealProb").value) || 50) / 100;
+
+            const payout = stake * odd;
+            const profit = payout - stake;
+            const impliedProb = (1 / odd) * 100;
+            const evPct = ((realProb * odd) - 1) * 100;
+
+            document.getElementById("calcPayout").textContent = `${payout.toFixed(2)} €`;
+            document.getElementById("calcProfit").textContent = `+${profit.toFixed(2)} €`;
+            document.getElementById("calcImplied").textContent = `${impliedProb.toFixed(1)}%`;
+
+            const evEl = document.getElementById("calcEvValue");
+            evEl.textContent = `${evPct >= 0 ? "+" : ""}${evPct.toFixed(1)}% (${evPct >= 0 ? "EV+" : "EV-"})`;
+            evEl.style.color = evPct >= 0 ? "var(--wina-green)" : "var(--wina-red)";
+        }
+
+        ["calcStake", "calcOdd", "calcRealProb"].forEach(id => {
+            document.getElementById(id).addEventListener("input", updateEvCalculator);
+        });
+        updateEvCalculator();
+
+        /* =========================================================================
+           RENDERIZADO DE RESULTADO Y COMPARATIVA CARA A CARA
+           ========================================================================= */
+        function renderResultOnScreen(data) {
+            lastPredictionResult = data;
+            const cfg = SPORT_CONFIG[data.sport] || SPORT_CONFIG.mma;
+
+            document.getElementById("resSportBadge").textContent = `${cfg.icon} ${cfg.name}`;
+            const timeStr = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+            document.getElementById("resTimestamp").textContent = timeStr;
+            document.getElementById("resProvider").textContent = (data.llm_provider || "RAG").toUpperCase();
+            document.getElementById("resEventTitle").textContent = data.event;
+            document.getElementById("sourcesSummaryLabel").textContent =
+                `Fuentes analizadas: ${(data.sources_queried || []).join(" • ")}`;
+
+            predictionOutput.textContent = data.prediction;
+            scrapedJsonOutput.textContent = JSON.stringify(data.scraped_data, null, 2);
+
+            // Extraer cuotas para el marcador superior y barras H2H
+            renderScoreboardOddsAndH2H(data);
+
+            resultContainer.style.display = "flex";
+        }
+
+        function renderScoreboardOddsAndH2H(data) {
+            const scoreboardOdds = document.getElementById("scoreboardOdds");
+            const h2hContainer = document.getElementById("h2hContainer");
+            const sd = data.scraped_data || {};
+            const parts = sd.participants || [data.event, "Oponente"];
+            const compA = parts[0] || "Local";
+            const compB = parts[1] || "Visitante";
+            const modules = sd.modules || {};
+
+            let oddsButtonsHtml = "";
+            let metrics = [];
+
+            if (data.sport === "mma") {
+                const mOdds = ((modules.bestfightodds || {}).market_odds) || {};
+                const oa = (mOdds[compA] || {}).decimal_odds || 1.42;
+                const ob = (mOdds[compB] || {}).decimal_odds || 2.95;
+                oddsButtonsHtml = `
+                    <button class="big-odd-box" data-odd="${oa}">
+                        <span class="odd-team">${compA}</span>
+                        <span class="odd-val">${oa}</span>
+                    </button>
+                    <button class="big-odd-box" data-odd="${ob}">
+                        <span class="odd-team">${compB}</span>
+                        <span class="odd-val">${ob}</span>
+                    </button>
+                `;
+                const fc = ((modules.ufcstats || {}).fighters_comparison) || {};
+                const fa = fc[compA] || {};
+                const fb = fc[compB] || {};
+                metrics = [
+                    { label: "Golpes Significativos Conectados / Min (SLpM)", a: parseFloat(fa.SLpM_sig_strikes_landed_per_min) || 4.68, b: parseFloat(fb.SLpM_sig_strikes_landed_per_min) || 7.17 },
+                    { label: "Derribos Promedio por 15 Min (TD Avg)", a: parseFloat(fa.TD_Avg_per_15min) || 1.92, b: parseFloat(fb.TD_Avg_per_15min) || 0.29 },
+                    { label: "Defensa de Derribo (%)", a: parseFloat(fa.TD_Def_pct) || 92, b: parseFloat(fb.TD_Def_pct) || 84 },
+                    { label: "Defensa de Striking (%)", a: parseFloat(fa.Str_Def_pct) || 65, b: parseFloat(fb.Str_Def_pct) || 60 }
+                ];
+            } else if (data.sport === "football") {
+                const uo = modules.understat_and_oddsportal || {};
+                const m1x2 = uo.market_odds_1x2 || {};
+                const o1 = (m1x2.home_win_1 || {}).decimal || 2.05;
+                const ox = (m1x2.draw_X || {}).decimal || 3.65;
+                const o2 = (m1x2.away_win_2 || {}).decimal || 3.40;
+                oddsButtonsHtml = `
+                    <button class="big-odd-box" data-odd="${o1}">
+                        <span class="odd-team">1 (${compA})</span>
+                        <span class="odd-val">${o1}</span>
+                    </button>
+                    <button class="big-odd-box" data-odd="${ox}">
+                        <span class="odd-team">EMPATE X</span>
+                        <span class="odd-val">${ox}</span>
+                    </button>
+                    <button class="big-odd-box" data-odd="${o2}">
+                        <span class="odd-team">2 (${compB})</span>
+                        <span class="odd-val">${o2}</span>
+                    </button>
+                `;
+                const fbStats = ((modules.fbref || {}).teams_advanced_stats) || {};
+                const xgStats = uo.xg_metrics || {};
+                const sa = fbStats[compA] || {};
+                const sb = fbStats[compB] || {};
+                const xa = xgStats[compA] || {};
+                const xb = xgStats[compB] || {};
+                metrics = [
+                    { label: "Expected Goals por Partido (xG)", a: parseFloat(xa.xG_per_match) || 2.21, b: parseFloat(xb.xG_per_match) || 2.04 },
+                    { label: "Posesión Media (%)", a: parseFloat(sa.possession_pct) || 61.4, b: parseFloat(sb.possession_pct) || 58.9 },
+                    { label: "Disparos a Puerta / 90m", a: parseFloat(sa.shots_on_target_per_90) || 6.8, b: parseFloat(sb.shots_on_target_per_90) || 5.9 },
+                    { label: "Pases Progresivos / 90m", a: parseFloat(sa.progressive_passes_per_90) || 48.2, b: parseFloat(sb.progressive_passes_per_90) || 44.7 }
+                ];
+            } else {
+                oddsButtonsHtml = `
+                    <button class="big-odd-box" data-odd="1.75">
+                        <span class="odd-team">${compA}</span>
+                        <span class="odd-val">1.75</span>
+                    </button>
+                    <button class="big-odd-box" data-odd="2.10">
+                        <span class="odd-team">${compB}</span>
+                        <span class="odd-val">2.10</span>
+                    </button>
+                `;
+                metrics = [
+                    { label: "Índice de Eficiencia Ofensiva", a: 118.4, b: 114.2 },
+                    { label: "Rendimiento en Situaciones Clave (%)", a: 64.0, b: 58.5 }
+                ];
+            }
+
+            scoreboardOdds.innerHTML = oddsButtonsHtml;
+            scoreboardOdds.querySelectorAll(".big-odd-box").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.getElementById("calcOdd").value = btn.getAttribute("data-odd");
+                    updateEvCalculator();
+                    document.querySelector('[data-tab="tabCalculator"]').click();
+                    showToast(`Cuota ${btn.getAttribute("data-odd")} cargada en el Simulador EV+`);
+                });
+            });
+
+            h2hContainer.innerHTML = metrics.map(m => {
+                const total = (m.a + m.b) || 1;
+                const pctA = Math.round((m.a / total) * 100);
+                const pctB = 100 - pctA;
+                return `
+                    <div class="h2h-row">
+                        <div class="h2h-labels">
+                            <span style="color: #ff6b70;">${compA}: ${m.a}</span>
+                            <span style="color: var(--wina-text-muted);">${m.label}</span>
+                            <span style="color: var(--wina-yellow);">${compB}: ${m.b}</span>
+                        </div>
+                        <div class="h2h-bar-wrap">
+                            <div class="h2h-bar-a" style="width: ${pctA}%;"></div>
+                            <div class="h2h-bar-b" style="width: ${pctB}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        /* =========================================================================
+           GESTIÓN DEL HISTORIAL COMPLETO (BACKEND + LOCALSTORAGE)
+           ========================================================================= */
+        async function loadHistory() {
+            try {
+                const res = await fetch("/api/history");
+                const data = await res.json();
+                if (Array.isArray(data.items) && data.items.length > 0) {
+                    historyData = data.items;
+                    localStorage.setItem("wina_rag_history", JSON.stringify(historyData));
+                } else {
+                    const local = localStorage.getItem("wina_rag_history");
+                    historyData = local ? JSON.parse(local) : [];
                 }
-            })
-            .catch(() => {});
+            } catch {
+                const local = localStorage.getItem("wina_rag_history");
+                historyData = local ? JSON.parse(local) : [];
+            }
+            renderHistoryList();
+        }
 
-        predictForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const sport = sportSelect.value;
-            const eventName = eventInput.value.trim();
-            if (!eventName) return;
+        function renderHistoryList() {
+            const query = historySearchInput.value.trim().toLowerCase();
+            const filtered = historyData.filter(item => {
+                const matchesSport = currentHistoryFilter === "all" || item.sport === currentHistoryFilter;
+                const matchesText = !query ||
+                    (item.event || "").toLowerCase().includes(query) ||
+                    (item.prediction || "").toLowerCase().includes(query);
+                return matchesSport && matchesText;
+            });
 
+            historyBadgeCount.textContent = historyData.length;
+            totalPredictionsStat.textContent = historyData.length;
+
+            if (filtered.length === 0) {
+                historyList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem 1rem; color: var(--wina-text-muted); font-size: 0.8rem;">
+                        No hay enfrentamientos registrados en este filtro. Realiza una búsqueda para guardar el pronóstico aquí.
+                    </div>
+                `;
+                return;
+            }
+
+            historyList.innerHTML = filtered.map(item => {
+                const cfg = SPORT_CONFIG[item.sport] || SPORT_CONFIG.mma;
+                const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString() : "";
+                const isActive = item.id === activeHistoryId ? "active" : "";
+                return `
+                    <div class="history-card ${isActive}" data-id="${item.id}">
+                        <div class="history-card-top">
+                            <span class="history-sport-tag">${cfg.icon} ${cfg.name}</span>
+                            <span>${dateStr}</span>
+                        </div>
+                        <div class="history-event-name">${item.event}</div>
+                        <div class="history-snippet">${item.prediction}</div>
+                        <div class="history-card-actions">
+                            <button type="button" class="hist-btn-link" data-action="expand">Ver respuesta completa ▾</button>
+                            <button type="button" class="hist-btn-del" data-action="delete" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            historyList.querySelectorAll(".history-card").forEach(card => {
+                const id = card.getAttribute("data-id");
+                const itemObj = historyData.find(h => h.id === id);
+
+                card.addEventListener("click", (e) => {
+                    const actionBtn = e.target.closest("[data-action]");
+                    if (actionBtn) {
+                        const action = actionBtn.getAttribute("data-action");
+                        if (action === "expand") {
+                            e.stopPropagation();
+                            card.classList.toggle("expanded");
+                            actionBtn.textContent = card.classList.contains("expanded")
+                                ? "Ocultar respuesta ▴"
+                                : "Ver respuesta completa ▾";
+                            return;
+                        }
+                        if (action === "delete") {
+                            e.stopPropagation();
+                            deleteHistoryItem(id);
+                            return;
+                        }
+                    }
+
+                    if (itemObj) {
+                        activeHistoryId = id;
+                        selectSport(itemObj.sport, false);
+                        eventInput.value = itemObj.event;
+                        renderResultOnScreen(itemObj);
+                        renderHistoryList();
+                        showToast(`Cargado del historial: ${itemObj.event}`);
+                    }
+                });
+            });
+        }
+
+        async function deleteHistoryItem(id) {
+            historyData = historyData.filter(h => h.id !== id);
+            localStorage.setItem("wina_rag_history", JSON.stringify(historyData));
+            renderHistoryList();
+            try {
+                await fetch(`/api/history/${id}`, { method: "DELETE" });
+            } catch {}
+        }
+
+        clearHistoryBtn.addEventListener("click", async () => {
+            historyData = [];
+            localStorage.removeItem("wina_rag_history");
+            renderHistoryList();
+            try {
+                await fetch("/api/history", { method: "DELETE" });
+            } catch {}
+            showToast("Historial vaciado correctamente");
+        });
+
+        historySearchInput.addEventListener("input", renderHistoryList);
+
+        document.querySelectorAll(".hist-filter-chip").forEach(chip => {
+            chip.addEventListener("click", () => {
+                document.querySelectorAll(".hist-filter-chip").forEach(c => c.classList.remove("active"));
+                chip.classList.add("active");
+                currentHistoryFilter = chip.getAttribute("data-filter");
+                renderHistoryList();
+            });
+        });
+
+        /* =========================================================================
+           EJECUCIÓN DE PREDICCIÓN (POST /api/predict)
+           ========================================================================= */
+        async function runPrediction(sport, eventName) {
             errorBanner.style.display = "none";
             resultContainer.style.display = "none";
             loadingBox.style.display = "block";
             submitBtn.disabled = true;
 
-            const steps = [
-                `[1/3] Lanzando Playwright Chromium (stealth) para "${eventName}"...`,
-                `[2/3] Parseando DOM con BeautifulSoup4 en (${SPORT_SOURCES[sport].join(", ")})...`,
-                `[3/3] Inyectando JSON estadístico y cuotas en el agente RAG (LLM)...`
-            ];
-            let stepIdx = 0;
-            loadingStep.textContent = steps[0];
-            const stepInterval = setInterval(() => {
-                stepIdx = (stepIdx + 1) % steps.length;
-                loadingStep.textContent = steps[stepIdx];
-            }, 1800);
+            const cfg = SPORT_CONFIG[sport] || SPORT_CONFIG.mma;
+            progressFill.style.width = "33%";
+            document.getElementById("stepBadge1").classList.add("active");
+            document.getElementById("stepBadge2").classList.remove("active");
+            document.getElementById("stepBadge3").classList.remove("active");
+            loadingStepText.textContent = `[1/3] Lanzando Playwright Chromium Stealth para "${eventName}"...`;
+
+            const timer1 = setTimeout(() => {
+                progressFill.style.width = "66%";
+                document.getElementById("stepBadge2").classList.add("active");
+                loadingStepText.textContent = `[2/3] Extrayendo DOM con BeautifulSoup4 en (${cfg.sources.join(", ")})...`;
+            }, 1400);
+
+            const timer2 = setTimeout(() => {
+                progressFill.style.width = "92%";
+                document.getElementById("stepBadge3").classList.add("active");
+                loadingStepText.textContent = `[3/3] Calculando probabilidades e inferencia RAG con LLM...`;
+            }, 2800);
 
             try {
                 const response = await fetch("/api/predict", {
@@ -573,30 +1856,78 @@
                 });
 
                 const data = await response.json();
-                clearInterval(stepInterval);
+                clearTimeout(timer1);
+                clearTimeout(timer2);
 
                 if (!response.ok) {
-                    throw new Error(data.detail || "Error desconocido en el servidor FastAPI.");
+                    throw new Error(data.detail || "Error en el servidor FastAPI.");
                 }
 
-                predictionOutput.textContent = data.prediction;
-                scrapedJsonOutput.textContent = JSON.stringify(data.scraped_data, null, 2);
-                timestampLabel.textContent = new Date().toLocaleTimeString();
                 if (data.llm_provider) {
                     providerBadge.textContent = `LLM: ${data.llm_provider.toUpperCase()}`;
                 }
 
+                // Guardar en el historial en memoria + localStorage
+                activeHistoryId = data.id;
+                historyData.unshift(data);
+                localStorage.setItem("wina_rag_history", JSON.stringify(historyData.slice(0, 100)));
+                renderHistoryList();
+
                 loadingBox.style.display = "none";
-                resultContainer.style.display = "block";
+                renderResultOnScreen(data);
+                showToast(`Pronóstico completado: ${eventName}`);
             } catch (err) {
-                clearInterval(stepInterval);
+                clearTimeout(timer1);
+                clearTimeout(timer2);
                 loadingBox.style.display = "none";
                 errorBanner.textContent = `[ERROR DE EJECUCIÓN]: ${err.message}`;
                 errorBanner.style.display = "block";
             } finally {
                 submitBtn.disabled = false;
             }
+        }
+
+        predictForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const ev = eventInput.value.trim();
+            if (!ev) return;
+            runPrediction(currentSport, ev);
         });
+
+        /* =========================================================================
+           BOTONES DE COPIAR Y DESCARGAR PRONÓSTICO
+           ========================================================================= */
+        document.getElementById("copyPredictionBtn").addEventListener("click", () => {
+            if (!lastPredictionResult) return;
+            navigator.clipboard.writeText(lastPredictionResult.prediction);
+            showToast("Pronóstico copiado al portapapeles");
+        });
+
+        document.getElementById("downloadPredictionBtn").addEventListener("click", () => {
+            if (!lastPredictionResult) return;
+            const blob = new Blob([lastPredictionResult.prediction], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `pronostico_${lastPredictionResult.event.replace(/\s+/g, "_").toLowerCase()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        /* =========================================================================
+           INICIALIZACIÓN
+           ========================================================================= */
+        selectSport("mma", false);
+        loadHistory();
+
+        fetch("/api/health")
+            .then(r => r.json())
+            .then(data => {
+                if (data.llm_provider) {
+                    providerBadge.textContent = `LLM: ${data.llm_provider.toUpperCase()}`;
+                }
+            })
+            .catch(() => {});
     </script>
 </body>
 </html>

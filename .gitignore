@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Historial local de predicciones del usuario
+history_store.json
+
 # Entornos virtuales de Python
 .venv/
 venv/

@@ -1,11 +1,15 @@
 """
-Servidor Backend FastAPI para el Buscador y Predictor Deportivo RAG.
-Sirve la interfaz web estática (static/index.html) y expone el endpoint de inferencia /api/predict.
+Servidor Backend FastAPI para el Buscador y Predictor Deportivo RAG (Edición Winamax UI).
+Sirve la interfaz web estática (static/index.html), expone el endpoint de inferencia /api/predict
+y gestiona el historial persistente de enfrentamientos y pronósticos (/api/history).
 """
 
 import asyncio
+import json
 import os
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -29,15 +33,16 @@ from pydantic import BaseModel, Field
 from llm_agent import generate_prediction
 from scraper import fetch_sports_data
 
-load_dotenv(override=True)
-
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+HISTORY_FILE = BASE_DIR / "history_store.json"
+
+load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
 
 app = FastAPI(
-    title="Sports Predictor RAG API",
-    description="Buscador y predictor deportivo Open-Source con Playwright, BeautifulSoup4 y LLM RAG (OpenAI / Gemini).",
-    version="1.0.0",
+    title="Sports Predictor RAG API — Winamax Edition",
+    description="Buscador y predictor deportivo Open-Source con Playwright, BeautifulSoup4, LLM RAG e historial persistente.",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -57,6 +62,8 @@ class PredictRequest(BaseModel):
 
 
 class PredictResponse(BaseModel):
+    id: str
+    timestamp: str
     status: str
     sport: str
     event: str
@@ -64,6 +71,26 @@ class PredictResponse(BaseModel):
     sources_queried: List[str]
     scraped_data: Dict[str, Any]
     prediction: str
+
+
+def _load_history() -> List[Dict[str, Any]]:
+    if not HISTORY_FILE.exists():
+        return []
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _save_history(items: List[Dict[str, Any]]) -> None:
+    try:
+        HISTORY_FILE.write_text(
+            json.dumps(items[:100], indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as err:
+        print(f"[WARN] No se pudo guardar history_store.json: {err}")
 
 
 @app.get("/", include_in_schema=False)
@@ -76,16 +103,16 @@ async def serve_frontend() -> FileResponse:
 
 @app.get("/api/health")
 async def health_check() -> Dict[str, str]:
-    load_dotenv(override=True)
+    load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
     openai_configured = bool(os.getenv("OPENAI_API_KEY", "").strip())
     gemini_configured = bool(os.getenv("GEMINI_API_KEY", "").strip())
-    provider = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+    provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
     if not openai_configured and not gemini_configured:
-        active_llm = "demo-mode (configure .env)"
+        active_llm = "quant-rag-local"
     elif provider == "gemini" and gemini_configured:
-        active_llm = "gemini"
+        active_llm = f"gemini ({os.getenv('GEMINI_MODEL', 'gemini-3.8-flash')})"
     elif openai_configured:
-        active_llm = "openai"
+        active_llm = f"openai ({os.getenv('OPENAI_MODEL', 'gpt-4o-mini')})"
     else:
         active_llm = "gemini"
 
@@ -93,6 +120,25 @@ async def health_check() -> Dict[str, str]:
         "status": "ok",
         "llm_provider": active_llm,
     }
+
+
+@app.get("/api/history")
+async def get_history() -> Dict[str, Any]:
+    return {"items": _load_history()}
+
+
+@app.delete("/api/history")
+async def clear_history() -> Dict[str, str]:
+    _save_history([])
+    return {"status": "cleared"}
+
+
+@app.delete("/api/history/{item_id}")
+async def delete_history_item(item_id: str) -> Dict[str, Any]:
+    history = _load_history()
+    filtered = [item for item in history if item.get("id") != item_id]
+    _save_history(filtered)
+    return {"status": "deleted", "remaining": len(filtered)}
 
 
 @app.post("/api/predict", response_model=PredictResponse)
@@ -105,7 +151,12 @@ async def predict_sport_event(payload: PredictRequest) -> PredictResponse:
             payload.event,
             scraped_data,
         )
-        return PredictResponse(
+        item_id = str(uuid.uuid4())[:8]
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        response_obj = PredictResponse(
+            id=item_id,
+            timestamp=now_iso,
             status="success",
             sport=payload.sport,
             event=payload.event,
@@ -114,6 +165,13 @@ async def predict_sport_event(payload: PredictRequest) -> PredictResponse:
             scraped_data=scraped_data,
             prediction=prediction_text,
         )
+
+        # Guardar automáticamente en el historial persistente
+        history = _load_history()
+        history.insert(0, response_obj.model_dump())
+        _save_history(history)
+
+        return response_obj
     except Exception as exc:
         err_msg = str(exc).strip() or repr(exc)
         raise HTTPException(
