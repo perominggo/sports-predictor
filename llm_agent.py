@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Tuple
 import httpx
 from dotenv import load_dotenv
 
-# Desactivar cualquier proxy SOCKS4/SOCKS5 heredado del Registro de Windows (ej. socks4://127.0.0.1:23321)
+# Desactivar cualquier proxy SOCKS4/SOCKS5 heredado del Registro de Windows
 urllib.request.getproxies = lambda: {}  # type: ignore[assignment]
 if hasattr(urllib.request, "getproxies_registry"):
     urllib.request.getproxies_registry = lambda: {}  # type: ignore[attr-defined]
@@ -65,22 +65,52 @@ def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
     return text, f"openai ({model_name})"
 
 
+def _discover_gemini_models(client: httpx.Client, api_key: str) -> List[str]:
+    """Consulta la lista de modelos activos en la cuenta de Google Gemini si los predeterminados cambian."""
+    try:
+        resp = client.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            params={"key": api_key},
+        )
+        if resp.status_code == 200:
+            models_data = resp.json().get("models", [])
+            usable = []
+            for m in models_data:
+                methods = m.get("supportedGenerationMethods", [])
+                name = m.get("name", "").replace("models/", "")
+                if "generateContent" in methods and "gemini" in name:
+                    usable.append(name)
+            return usable
+    except Exception:
+        pass
+    return []
+
+
 def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
-    configured_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    configured_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
     candidate_models: List[str] = []
     for m in (
         configured_model,
-        "gemini-2.5-pro",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
+        "gemini-3.8-flash",
+        "gemini-3.8-pro",
+        "gemini-3.5-flash",
+        "gemini-3.5-pro",
+        "gemini-3.0-flash",
     ):
         if m and m not in candidate_models:
             candidate_models.append(m)
 
     last_err = ""
-    with httpx.Client(trust_env=False, timeout=35.0) as client:
+    with httpx.Client(trust_env=False, timeout=45.0) as client:
+        # Añadir también modelos autodescubiertos por la API por si hay nuevos lanzamientos
+        discovered = _discover_gemini_models(client, api_key)
+        for dm in discovered:
+            if dm not in candidate_models:
+                candidate_models.append(dm)
+
         for model_name in candidate_models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+            clean_model = model_name.replace("models/", "")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent"
             payload = {
                 "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
                 "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
@@ -94,7 +124,7 @@ def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     text = "".join(p.get("text", "") for p in parts).strip()
                     if text:
-                        return text, f"gemini ({model_name})"
+                        return text, f"gemini ({clean_model})"
             else:
                 try:
                     err_json = resp.json()
@@ -102,7 +132,6 @@ def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
                 except Exception:
                     err_msg = resp.text
                 last_err = f"HTTP {resp.status_code}: {err_msg}"
-                # Si la API key en sí es rechazada (400 API_KEY_INVALID / 403), no hace falta probar más modelos
                 if resp.status_code in (400, 401, 403) and "key" in last_err.lower():
                     break
 
