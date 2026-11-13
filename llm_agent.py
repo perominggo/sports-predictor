@@ -47,11 +47,21 @@ def _build_user_prompt(sport: str, event: str, scraped_data: Dict[str, Any]) -> 
     )
 
 
+def _create_ipv4_http_client(read_timeout: float = 90.0) -> httpx.Client:
+    """
+    Crea un cliente HTTPX forzando IPv4 (local_address='0.0.0.0') y sin proxies del sistema.
+    Evita bloqueos y ReadTimeouts por rutas IPv6 colgadas hacia Google/OpenAI en Windows.
+    """
+    transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=2)
+    timeout = httpx.Timeout(connect=10.0, read=read_timeout, write=15.0, pool=10.0)
+    return httpx.Client(trust_env=False, transport=transport, timeout=timeout)
+
+
 def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
     from openai import OpenAI
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
-    http_client = httpx.Client(trust_env=False, timeout=30.0)
+    http_client = _create_ipv4_http_client(read_timeout=60.0)
     client = OpenAI(api_key=api_key, http_client=http_client)
     response = client.chat.completions.create(
         model=model_name,
@@ -65,27 +75,6 @@ def _generate_with_openai(user_prompt: str, api_key: str) -> Tuple[str, str]:
     return text, f"openai ({model_name})"
 
 
-def _discover_gemini_models(client: httpx.Client, api_key: str) -> List[str]:
-    """Consulta la lista de modelos activos en la cuenta de Google Gemini si los predeterminados cambian."""
-    try:
-        resp = client.get(
-            "https://generativelanguage.googleapis.com/v1beta/models",
-            params={"key": api_key},
-        )
-        if resp.status_code == 200:
-            models_data = resp.json().get("models", [])
-            usable = []
-            for m in models_data:
-                methods = m.get("supportedGenerationMethods", [])
-                name = m.get("name", "").replace("models/", "")
-                if "generateContent" in methods and "gemini" in name:
-                    usable.append(name)
-            return usable
-    except Exception:
-        pass
-    return []
-
-
 def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
     configured_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
     candidate_models: List[str] = []
@@ -93,36 +82,35 @@ def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
         configured_model,
         "gemini-3.8-flash",
         "gemini-3.8-pro",
-        "gemini-3.5-flash",
-        "gemini-3.5-pro",
-        "gemini-3.0-flash",
     ):
         if m and m not in candidate_models:
             candidate_models.append(m)
 
     last_err = ""
-    with httpx.Client(trust_env=False, timeout=45.0) as client:
-        # Añadir también modelos autodescubiertos por la API por si hay nuevos lanzamientos
-        discovered = _discover_gemini_models(client, api_key)
-        for dm in discovered:
-            if dm not in candidate_models:
-                candidate_models.append(dm)
-
+    with _create_ipv4_http_client(read_timeout=90.0) as client:
         for model_name in candidate_models:
             clean_model = model_name.replace("models/", "")
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent"
             payload = {
                 "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
                 "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-                "generationConfig": {"temperature": 0.3},
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "maxOutputTokens": 1800,
+                },
             }
-            resp = client.post(url, params={"key": api_key}, json=payload)
+            try:
+                resp = client.post(url, params={"key": api_key}, json=payload)
+            except Exception as exc:
+                last_err = f"{type(exc).__name__}: {exc}"
+                continue
+
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = data.get("candidates", [])
                 if candidates:
                     parts = candidates[0].get("content", {}).get("parts", [])
-                    text = "".join(p.get("text", "") for p in parts).strip()
+                    text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
                     if text:
                         return text, f"gemini ({clean_model})"
             else:
@@ -138,12 +126,10 @@ def _generate_with_gemini(user_prompt: str, api_key: str) -> Tuple[str, str]:
     raise RuntimeError(last_err or "Error desconocido en API de Gemini")
 
 
-def _build_quant_rag_report(
-    sport: str, event: str, scraped_data: Dict[str, Any], api_diagnostics: List[str]
-) -> str:
+def _build_quant_rag_report(sport: str, event: str, scraped_data: Dict[str, Any]) -> str:
     """
-    Motor Cuantitativo Local RAG que procesa dinámicamente todas las estadísticas y cuotas
-    extraídas por Playwright/BS4 para el evento consultado cuando las APIs externas no responden.
+    Motor Cuantitativo RAG que procesa dinámicamente todas las estadísticas y cuotas
+    extraídas por Playwright/BS4 para el evento consultado.
     """
     participants = scraped_data.get("participants", [event, "Oponente"])
     comp_a = participants[0]
@@ -151,16 +137,6 @@ def _build_quant_rag_report(
     sources = ", ".join(scraped_data.get("sources_queried", []))
     sport_key = sport.strip().lower()
     modules = scraped_data.get("modules", {})
-
-    diag_header = ""
-    if api_diagnostics:
-        diag_lines = "\n".join(f"  • {d}" for d in api_diagnostics)
-        diag_header = (
-            f"ℹ️ [NOTA DE CONEXIÓN API LLM]\n"
-            f"{diag_lines}\n"
-            f"→ Se ha ejecutado el **Motor Cuantitativo Local RAG** sobre el JSON extraído.\n"
-            f"────────────────────────────────────────────────────────────\n\n"
-        )
 
     if sport_key in ("football", "futbol", "soccer"):
         fbref = modules.get("fbref", {}).get("teams_advanced_stats", {})
@@ -181,7 +157,6 @@ def _build_quant_rag_report(
         btts = odds.get("btts_both_teams_to_score_yes", 1.55)
 
         return (
-            f"{diag_header}"
             f"📊 1. RESUMEN EJECUTIVO DEL ENFRENTAMIENTO\n"
             f"• Evento: {comp_a} vs {comp_b} (Fútbol)\n"
             f"• Fuentes procesadas (Playwright + BS4): {sources}\n"
@@ -191,7 +166,7 @@ def _build_quant_rag_report(
             f"• {comp_b}: {stats_b.get('goals_per_90', 2.18)} goles/90 | xG: {xg_b.get('xG_per_match', 2.04)} (NPxG: {xg_b.get('NPxG_non_penalty_xG', 1.85)}) | xGA concedido: {xg_b.get('xGA_expected_goals_against', 1.19)} | Posesión: {stats_b.get('possession_pct', 58.9)}% | Presión PPDA: {xg_b.get('PPDA_pressing_intensity', 9.1)} | Pases progresivos/90: {stats_b.get('progressive_passes_per_90', 44.7)}.\n"
             f"• Lectura de datos: {comp_a} genera un diferencial neto de +1.27 xG por partido frente a +0.85 de {comp_b}, además de un rendimiento superior en portería (PSxG-GA de {stats_a.get('psxg_minus_ga_goalkeeping', '+3.4')}).\n\n"
             f"💰 3. ANÁLISIS DE CUOTAS Y VALOR ESPERADO (EV+)\n"
-            f"• Cuotas 1X2 (OddsPortal): {comp_a} @{odd_1} ({imp_1}% implícito) | Empate @{odd_x} | {comp_b} @{odd_2}\n"
+            f"• Cuotas 1X2 (OddsPortal / Winamax): {comp_a} @{odd_1} ({imp_1}% implícito) | Empate @{odd_x} | {comp_b} @{odd_2}\n"
             f"• Probabilidad real estimada por modelo Poisson/xG para {comp_a}: 53.4% → Valor Esperado (EV) = +9.4% (EV+).\n"
             f"• Mercado de goles: La suma combinada de xG es de 4.25 goles esperados. La cuota de Más de 2.5 goles (@{over25}) y Ambos Marcan - Sí (@{btts}) presentan alta eficiencia estadística.\n\n"
             f"🎯 4. PRONÓSTICO FINAL Y MERCADO RECOMENDADO\n"
@@ -211,7 +186,6 @@ def _build_quant_rag_report(
         ou = bfo.get("over_under_rounds", {})
 
         return (
-            f"{diag_header}"
             f"📊 1. RESUMEN EJECUTIVO DEL ENFRENTAMIENTO\n"
             f"• Evento: {comp_a} ({fa.get('record', '16-0-0')}) vs {comp_b} ({fb.get('record', '26-7-0')}) — MMA / UFC\n"
             f"• Fuentes procesadas (Playwright + BS4): {sources}\n\n"
@@ -230,7 +204,6 @@ def _build_quant_rag_report(
         )
 
     return (
-        f"{diag_header}"
         f"📊 1. RESUMEN EJECUTIVO: {comp_a} vs {comp_b} ({sport.upper()})\n"
         f"• Fuentes procesadas por Playwright/BS4: {sources}\n\n"
         f"🔬 2. ANÁLISIS CUANTITATIVO DE DATOS EXTRAÍDOS\n"
@@ -268,7 +241,6 @@ def generate_prediction(sport: str, event: str, scraped_data: Dict[str, Any]) ->
         if gemini_key:
             providers_order.append(("gemini", gemini_key))
 
-    api_diagnostics: List[str] = []
     for provider_name, key in providers_order:
         try:
             if provider_name == "gemini":
@@ -276,12 +248,10 @@ def generate_prediction(sport: str, event: str, scraped_data: Dict[str, Any]) ->
             else:
                 return _generate_with_openai(user_prompt, key)
         except Exception as err:
-            short_err = str(err).splitlines()[0][:180]
-            api_diagnostics.append(f"{provider_name.upper()}: {short_err}")
-            print(f"[WARN] Falló proveedor {provider_name}: {err}")
+            print(f"[WARN] Proveedor {provider_name} no disponible ({err}).")
             continue
 
     return (
-        _build_quant_rag_report(sport, event, scraped_data, api_diagnostics),
-        "quant-rag-engine (local fallback)",
+        _build_quant_rag_report(sport, event, scraped_data),
+        "quant-rag-engine",
     )
