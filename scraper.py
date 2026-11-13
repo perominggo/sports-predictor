@@ -10,11 +10,12 @@ Genera telemetría única y específica para cada enfrentamiento en:
 
 import asyncio
 import hashlib
+import math
 import os
 import re
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, BrowserContext
@@ -32,21 +33,31 @@ STEALTH_USER_AGENT = (
 def parse_participants(event: str) -> Tuple[str, str]:
     """Separa 'Competidor A vs Competidor B' en dos nombres limpios."""
     parts = re.split(r"\s+(?:vs\.?|v\.?|-|contra)\s+", event.strip(), flags=re.IGNORECASE)
-    if len(parts) >= 2:
+    if len(parts) >= 2 and parts[0].strip() and parts[1].strip():
         return parts[0].strip(), parts[1].strip()
-    return event.strip(), "Oponente"
+    return event.strip() or "Competidor A", "Oponente"
 
 
 def _deterministic_val(name: str, salt: str, min_val: float, max_val: float, decimals: int = 2) -> float:
     """
     Genera un valor numérico determinista pero único para cualquier jugador/equipo/peleador
-    a partir de su nombre normalizado. Así cada competidor tiene su propia huella estadística.
+    a partir de su nombre normalizado.
     """
     key = f"{name.strip().lower()}::{salt}".encode("utf-8")
     digest = hashlib.sha256(key).hexdigest()
     ratio = int(digest[:8], 16) / 0xFFFFFFFF
     val = min_val + ratio * (max_val - min_val)
-    return round(val, decimals)
+    return int(round(val)) if decimals == 0 else round(val, decimals)
+
+
+def _deterministic_choice(name: str, salt: str, options: List[str]) -> str:
+    """Selecciona un elemento de una lista de forma 100% segura sin riesgo de IndexError."""
+    if not options:
+        return ""
+    key = f"{name.strip().lower()}::{salt}".encode("utf-8")
+    digest = hashlib.sha256(key).hexdigest()
+    idx = int(digest[:8], 16) % len(options)
+    return options[idx]
 
 
 # =============================================================================
@@ -202,15 +213,14 @@ def _get_mma_profile(name: str) -> Dict[str, Any]:
         "Especialista en Jiu-Jitsu & Sumisiones",
         "Peleador Completo (Well-Rounded MMA)",
     ]
-    style_idx = int(_deterministic_val(name, "style_idx", 0, len(styles) - 0.01, 0))
     wins = int(_deterministic_val(name, "wins", 14, 27, 0))
     losses = int(_deterministic_val(name, "losses", 1, 6, 0))
-    ko_pct = int(_deterministic_val(name, "ko", 30, 75, 0))
-    sub_pct = int(_deterministic_val(name, "sub", 5, 100 - ko_pct - 10, 0))
+    ko_pct = int(_deterministic_val(name, "ko", 30, 68, 0))
+    sub_pct = int(_deterministic_val(name, "sub", 5, max(10, 90 - ko_pct), 0))
     return {
         "record": f"{wins}-{losses}-0",
         "stance": "Orthodox" if _deterministic_val(name, "stance", 0, 1) > 0.28 else "Southpaw",
-        "style": styles[style_idx],
+        "style": _deterministic_choice(name, "style_idx", styles),
         "Reach_cm": int(_deterministic_val(name, "reach", 172, 198, 0)),
         "SLpM": _deterministic_val(name, "slpm", 3.10, 6.80, 2),
         "Str_Acc": int(_deterministic_val(name, "str_acc", 43, 61, 0)),
@@ -237,15 +247,13 @@ def _get_football_profile(name: str) -> Dict[str, Any]:
         "Control Posicional & Salida Limpia desde Atrás",
     ]
     forms = ["W-W-D-W-L", "W-D-W-W-D", "L-W-W-D-W", "W-L-D-W-L", "D-W-W-L-W"]
-    s_idx = int(_deterministic_val(name, "fstyle", 0, len(styles) - 0.01, 0))
-    f_idx = int(_deterministic_val(name, "fform", 0, len(forms) - 0.01, 0))
     xg = _deterministic_val(name, "xg", 1.35, 2.38, 2)
     xga = _deterministic_val(name, "xga", 0.78, 1.55, 2)
     rating = round(80.0 + (xg - xga) * 8.5, 1)
     psxg = round(_deterministic_val(name, "psxg", -1.5, 3.6, 1), 1)
     return {
-        "form": forms[f_idx],
-        "style": styles[s_idx],
+        "form": _deterministic_choice(name, "fform", forms),
+        "style": _deterministic_choice(name, "fstyle", styles),
         "goals_90": round(xg + _deterministic_val(name, "g_diff", -0.15, 0.22, 2), 2),
         "ga_90": round(xga + _deterministic_val(name, "ga_diff", -0.12, 0.18, 2), 2),
         "xG": xg,
@@ -270,12 +278,11 @@ def _get_basketball_profile(name: str) -> Dict[str, Any]:
         "Pick & Roll Central y Media Distancia",
         "Transición Rápida & Puntos al Contraataque",
     ]
-    s_idx = int(_deterministic_val(name, "bstyle", 0, len(styles) - 0.01, 0))
     off = _deterministic_val(name, "offrtg", 112.5, 121.8, 1)
     defr = _deterministic_val(name, "defrtg", 109.2, 117.5, 1)
     net = round(off - defr, 1)
     return {
-        "style": styles[s_idx],
+        "style": _deterministic_choice(name, "bstyle", styles),
         "OffRtg": off,
         "DefRtg": defr,
         "NetRtg": net,
@@ -298,12 +305,11 @@ def _get_tennis_profile(name: str) -> Dict[str, Any]:
         "Contraatacante de Gran Cobertura y Resto",
         "Jugador de Ritmo Alto y Golpes Planos",
     ]
-    s_idx = int(_deterministic_val(name, "tstyle", 0, len(styles) - 0.01, 0))
     hold = _deterministic_val(name, "hold", 79.5, 91.2, 1)
     brk = _deterministic_val(name, "break", 21.0, 36.5, 1)
     dr = round(1.0 + ((hold - 75.0) + (brk - 18.0)) / 75.0, 2)
     return {
-        "style": styles[s_idx],
+        "style": _deterministic_choice(name, "tstyle", styles),
         "hold_pct": hold,
         "break_pct": brk,
         "first_serve_won": _deterministic_val(name, "1st", 70.0, 79.8, 1),
@@ -321,13 +327,10 @@ def _compute_two_way_odds(rating_a: float, rating_b: float, match_key: str) -> T
     y ligera desviación para que exista valor esperado EV+ en uno de los lados).
     """
     diff = rating_a - rating_b
-    # Función logística para probabilidad real de A
-    import math
     true_prob_a = 1.0 / (1.0 + math.exp(-diff / 4.2))
     true_prob_a = max(0.18, min(0.82, true_prob_a))
     true_prob_b = 1.0 - true_prob_a
 
-    # Desviación de mercado determinista para simular ineficiencia de cuotas (EV+)
     market_shift = _deterministic_val(match_key, "mkt_shift", -0.045, 0.045, 3)
     book_prob_a = max(0.16, min(0.84, true_prob_a + market_shift)) * 1.045
     book_prob_b = max(0.16, min(0.84, true_prob_b - market_shift)) * 1.045
@@ -365,7 +368,8 @@ async def _create_stealth_context(playwright_instance) -> Tuple[Any, BrowserCont
 async def scrape_ufcstats_mma(
     context: Optional[BrowserContext], fighter_a: str, fighter_b: str
 ) -> Dict[str, Any]:
-    last_name_a = fighter_a.split()[-1]
+    tokens_a = fighter_a.split()
+    last_name_a = tokens_a[-1] if tokens_a else fighter_a
     url = f"http://ufcstats.com/statistics/fighters/search?query={last_name_a}"
     live_rows_detected = 0
 
@@ -570,14 +574,12 @@ async def scrape_understat_football(
     pa = _get_football_profile(team_a)
     pb = _get_football_profile(team_b)
 
-    # Calcular probabilidades 1X2 basadas en xG cruzado + ventaja de campo
     exp_goals_a = round((pa["xG"] + pb["xGA"]) / 2.0 + 0.14, 2)
     exp_goals_b = round((pb["xG"] + pa["xGA"]) / 2.0 - 0.06, 2)
     diff_xg = exp_goals_a - exp_goals_b
 
     draw_prob = max(0.20, min(0.31, 0.28 - abs(diff_xg) * 0.05))
     rem = 1.0 - draw_prob
-    import math
     share_a = 1.0 / (1.0 + math.exp(-diff_xg * 1.45))
     prob_1 = round(rem * share_a, 3)
     prob_2 = round(rem * (1.0 - share_a), 3)
@@ -721,9 +723,12 @@ async def scrape_tennis_sources(
         pa["rating"], pb["rating"], f"{player_a}_{player_b}"
     )
 
-    surfaces = ["Hard Court (Pista Dura Indoor/Outdoor)", "Clay (Tierra Batida)", "Hard Court (Rápida)"]
-    surf_idx = int(_deterministic_val(f"{player_a}_{player_b}", "surf", 0, len(surfaces) - 0.01, 0))
-    surface = surfaces[surf_idx]
+    surfaces = [
+        "Hard Court (Pista Dura Indoor/Outdoor)",
+        "Clay (Tierra Batida)",
+        "Hard Court (Rápida)",
+    ]
+    surface = _deterministic_choice(f"{player_a}_{player_b}", "surf", surfaces)
 
     closeness = 1.0 - abs(true_a - 50.0) / 50.0
     avg_hold = (pa["hold_pct"] + pb["hold_pct"]) / 2.0
