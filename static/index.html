@@ -1645,20 +1645,51 @@
                     { label: "Disparos a Puerta / 90m", a: parseFloat(sa.shots_on_target_per_90) || 6.8, b: parseFloat(sb.shots_on_target_per_90) || 5.9 },
                     { label: "Pases Progresivos / 90m", a: parseFloat(sa.progressive_passes_per_90) || 48.2, b: parseFloat(sb.progressive_passes_per_90) || 44.7 }
                 ];
-            } else {
+            } else if (data.sport === "basketball") {
+                const mOdds = ((modules.market_odds || {}).moneyline) || {};
+                const oa = mOdds[compA] || 1.75;
+                const ob = mOdds[compB] || 2.10;
                 oddsButtonsHtml = `
-                    <button class="big-odd-box" data-odd="1.75">
+                    <button class="big-odd-box" data-odd="${oa}">
                         <span class="odd-team">${compA}</span>
-                        <span class="odd-val">1.75</span>
+                        <span class="odd-val">${oa}</span>
                     </button>
-                    <button class="big-odd-box" data-odd="2.10">
+                    <button class="big-odd-box" data-odd="${ob}">
                         <span class="odd-team">${compB}</span>
-                        <span class="odd-val">2.10</span>
+                        <span class="odd-val">${ob}</span>
                     </button>
                 `;
+                const pe = modules.pace_and_efficiency || {};
+                const ta = pe[compA] || {};
+                const tb = pe[compB] || {};
                 metrics = [
-                    { label: "Índice de Eficiencia Ofensiva", a: 118.4, b: 114.2 },
-                    { label: "Rendimiento en Situaciones Clave (%)", a: 64.0, b: 58.5 }
+                    { label: "Eficiencia Ofensiva (OffRtg / 100 pos)", a: parseFloat(ta.OffRtg_per_100_poss) || 118.0, b: parseFloat(tb.OffRtg_per_100_poss) || 114.5 },
+                    { label: "Ritmo de Posesiones (Pace)", a: parseFloat(ta.Pace) || 99.5, b: parseFloat(tb.Pace) || 100.2 },
+                    { label: "Tiro Efectivo (eFG%)", a: parseFloat(ta.eFG_pct) || 56.5, b: parseFloat(tb.eFG_pct) || 54.8 },
+                    { label: "Porcentaje de Rebote (%)", a: parseFloat(ta.rebound_pct) || 51.2, b: parseFloat(tb.rebound_pct) || 49.5 }
+                ];
+            } else {
+                const mOdds = ((modules.market_odds || {}).match_winner_decimal) || {};
+                const oa = mOdds[compA] || 1.85;
+                const ob = mOdds[compB] || 1.98;
+                oddsButtonsHtml = `
+                    <button class="big-odd-box" data-odd="${oa}">
+                        <span class="odd-team">${compA}</span>
+                        <span class="odd-val">${oa}</span>
+                    </button>
+                    <button class="big-odd-box" data-odd="${ob}">
+                        <span class="odd-team">${compB}</span>
+                        <span class="odd-val">${ob}</span>
+                    </button>
+                `;
+                const ssm = modules.surface_and_serve_metrics || {};
+                const pa = ssm[compA] || {};
+                const pb = ssm[compB] || {};
+                metrics = [
+                    { label: "Juegos Ganados al Saque (Hold %)", a: parseFloat(pa.hold_pct_last_52_weeks) || 88.0, b: parseFloat(pb.hold_pct_last_52_weeks) || 86.5 },
+                    { label: "Rupturas al Resto (Break %)", a: parseFloat(pa.break_pct_last_52_weeks) || 29.5, b: parseFloat(pb.break_pct_last_52_weeks) || 26.8 },
+                    { label: "Puntos Ganados con 1er Saque (%)", a: parseFloat(pa.first_serve_points_won_pct) || 75.0, b: parseFloat(pb.first_serve_points_won_pct) || 74.0 },
+                    { label: "Dominance Ratio (DR)", a: parseFloat(pa.dominance_ratio) || 1.35, b: parseFloat(pb.dominance_ratio) || 1.28 }
                 ];
             }
 
